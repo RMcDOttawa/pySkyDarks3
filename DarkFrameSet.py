@@ -1,3 +1,4 @@
+from FrameSet import FrameSet
 
 
 class DarkFrameSet(FrameSet):
@@ -5,26 +6,26 @@ class DarkFrameSet(FrameSet):
     # _exposure
 
     def __init__(self, number_of_frames: int = 16,
-                 exposure: int = 300,
+                 exposure: float = 300,
                  binning: int = 1,
                  number_complete: int = 0):
         FrameSet.__init__(self, number_of_frames=number_of_frames, binning=binning, number_complete=number_complete)
-        self._exposure_seconds = exposure
+        self._exposure_seconds: float = exposure
 
     def get_exposure_seconds(self): return self._exposure_seconds
     def set_exposure_seconds(self, value):  self._exposure_seconds = value
 
     def fieldNumberAsString(self, field_number: int) -> str:
         result = "invalid"
-        if (field_number == 0):
+        if field_number == 0:
             result = str(self._numberOfFrames)
-        elif (field_number == 1):
+        elif field_number == 1:
             result = "Dark"
-        elif (field_number == 2):
+        elif field_number == 2:
             result = str(self._exposure_seconds)
-        elif (field_number == 3):
+        elif field_number == 3:
             result = f"{self._binning} x {self._binning}"
-        elif (field_number == 4):
+        elif field_number == 4:
             result = str(self._numberComplete)
         else:
             print("fieldNumberAsString: invalid field number " + str(field_number))

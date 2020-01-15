@@ -1,5 +1,12 @@
 # Class to send and receive commands (Javascript commands and text responses) to the
 # server running TheSkyX
+import socket
+
+from PyQt5.QtCore import QMutex
+
+from Validators import Validators
+
+
 class TheSkyX:
 
     MAX_RECEIVE_SIZE = 1024
@@ -24,13 +31,13 @@ class TheSkyX:
     # Tell TheSkyX to connect to the camera
     def connect_to_camera(self) -> (bool, str):
         command_line = "ccdsoftCamera.Connect();"
-        (success,message) = self.send_command_no_return(command_line)
+        (success, message) = self.send_command_no_return(command_line)
         return success, message
 
     # Tell TheSkyX to disconnect from the camera
     def disconnect_camera(self) -> (bool, str):
         command_line = "ccdsoftCamera.Disconnect();"
-        (success,message) = self.send_command_no_return(command_line)
+        (success, message) = self.send_command_no_return(command_line)
         return success, message
 
     # Tell TheSkyX to take a bias frame at given binning to the camera
@@ -59,7 +66,7 @@ class TheSkyX:
         return success, message
 
     # Set the camera cooling on or off and, if on, set the target temperature
-    def set_camera_cooling(self, cooling_on: bool, target_temperature: float) -> (bool,str):
+    def set_camera_cooling(self, cooling_on: bool, target_temperature: float) -> (bool, str):
         # print(f"set_camera_cooling({cooling_on},{target_temperature})")
         target_temperature_command = ""
         if cooling_on:
@@ -96,7 +103,7 @@ class TheSkyX:
         temperature = 0
         (success, temperature_result, message) = self.send_command_with_return(command_with_return)
         if success:
-            temperature = Validators.validFloatInRange(temperature_result, -270, +200)
+            temperature = Validators.valid_float_in_range(temperature_result, -270, +200)
             if temperature is None:
                 success = False
                 temperature = 0
@@ -106,7 +113,7 @@ class TheSkyX:
     # Set up the camera parameters for an image (don't actually take the image)
     #  (success, message) = server.set_camera_image(frame_type, binning, exposure_seconds)
     def set_camera_image(self,
-                         frame_type_code: int, # light,bias,dark,flat = 1,2,3,4
+                         frame_type_code: int,  # light,bias,dark,flat = 1,2,3,4
                          binning: int,
                          exposure_seconds: float) -> (bool, str):
         # print(f"set_camera_image({frame_type_code},{binning},{exposure_seconds})")
@@ -126,7 +133,7 @@ class TheSkyX:
         (success, message) = self.send_command_no_return(command_with_no_return)
         return success, message
 
-    # Start taking image, ascynchronously (i.e. command returns right away, doesn't wait for image)
+    # Start taking image, asynchronously (i.e. command returns right away, doesn't wait for image)
     def start_image_asynchronously(self) -> (bool, str):
         # print("start_image_asynchronously")
         command_with_no_return = "ccdsoftCamera.Asynchronous=true;" \
@@ -172,10 +179,10 @@ class TheSkyX:
         return command_success, is_complete, message
 
     # Send Abort to camera to stop the image in progress
-    def abort_image(self) -> (bool,str):
+    def abort_image(self) -> (bool, str):
         # print("abort_image")
         command_line = "ccdsoftCamera.Abort();"
-        (success,message) = self.send_command_no_return(command_line)
+        (success, message) = self.send_command_no_return(command_line)
         return success, message
 
     # Send a command to the server and get a returned result value
@@ -233,7 +240,8 @@ class TheSkyX:
         return success, result, message
 
     # Convert a bool to a string in javascript-bool format (lowercase)
-    def js_bool(self, value: bool) -> str:
+    @staticmethod
+    def js_bool(value: bool) -> str:
         return "true" if value else "false"
 
     # Get the cooler power level.

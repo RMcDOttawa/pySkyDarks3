@@ -5,6 +5,11 @@
 #   _numDarkFrames      number of dark frames for each binning and exposure
 #   _darkBinnings       array of binning values for dark frames, empty if none
 #   _darkExposures      array of exposure values (float, seconds) for dark frames
+import re
+
+from PyQt5 import uic
+from PyQt5.QtWidgets import QDialog
+
 from Validators import Validators
 
 
@@ -25,14 +30,16 @@ class BulkEntryDialog(QDialog):
     def getDarkExposures(self) -> [int]:
         return self._darkExposures
 
-    def __init__(self, parent):
+    def __init__(self):
         # print("BulkEntryDialog/init entered")
         QDialog.__init__(self)
         self.ui = uic.loadUi("BulkEntry.ui")
 
-        self._numBiasFrames = 0
-        self._numDarkFrames = 0
-        self._darkExposures = []
+        self._numBiasFrames: int = 0
+        self._numDarkFrames: int = 0
+        self._darkExposures: [float] = []
+        self._biasBinnings: [int] = []
+        self._darkBinnings: [int] = []
 
         self.setBiasBinnings()   # Store from initially-set checkboxes
         self.setDarkBinnings()
@@ -61,7 +68,7 @@ class BulkEntryDialog(QDialog):
 
     # Set Bias binnings array from the checkboxes selected
     def setBiasBinnings(self):
-        self._biasBinnings : [int] = []
+        self._biasBinnings: [int] = []
         if self.ui.biasBin11.isChecked():
             self._biasBinnings.append(1)
         if self.ui.biasBin22.isChecked():
@@ -73,7 +80,7 @@ class BulkEntryDialog(QDialog):
 
     # Set Dark binnings array from the checkboxes selected
     def setDarkBinnings(self):
-        self._darkBinnings : [int] = []
+        self._darkBinnings: [int] = []
         if self.ui.darkBin11.isChecked():
             self._darkBinnings.append(1)
         if self.ui.darkBin22.isChecked():
@@ -88,9 +95,9 @@ class BulkEntryDialog(QDialog):
     #   One or more dark frames with at least one binning and at least one exposure length
     def enableButtons(self):
         # print("enableButtons")
-        enabled : bool =    (self._numBiasFrames > 0 and len(self._biasBinnings) > 0) or \
-                            (self._numDarkFrames > 0 and len(self._darkBinnings) > 0 \
-                                and len(self._darkExposures) > 0)
+        enabled: bool = (self._numBiasFrames > 0 and len(self._biasBinnings) > 0)\
+                        or (self._numDarkFrames > 0 and len(self._darkBinnings) > 0
+                            and len(self._darkExposures) > 0)
         self.ui.saveButton.setEnabled(enabled)
 
     def darkBinningsChanged(self):
@@ -103,9 +110,9 @@ class BulkEntryDialog(QDialog):
 
     def biasFramesCountChanged(self):
         # print("biasFramesCountChanged")
-        proposed_value : str = self.ui.biasFramesCount.text()
+        proposed_value: str = self.ui.biasFramesCount.text()
         self.ui.biasMessage.setText("")
-        value : int = Validators.validIntInRange(proposed_value, 1, 32767)
+        value: int = Validators.valid_int_in_range(proposed_value, 1, 32767)
         if value is not None:
             self._numBiasFrames = value
         else:
@@ -116,9 +123,9 @@ class BulkEntryDialog(QDialog):
 
     def darkFramesCountChanged(self):
         # print("darkFramesCountChanged")
-        proposed_value : str = self.ui.darkFramesCount.text()
+        proposed_value: str = self.ui.darkFramesCount.text()
         self.ui.darkMessage.setText("")
-        value : int = Validators.validIntInRange(proposed_value, 1, 32767)
+        value: int = Validators.valid_int_in_range(proposed_value, 1, 32767)
         if value is not None:
             self._numDarkFrames = value
         else:
@@ -133,15 +140,14 @@ class BulkEntryDialog(QDialog):
     # set the exposures array to empty and produce an error
     def exposureLengthsChanged(self):
         # print("exposureLengthsChanged")
-        field_string : str = str(self.ui.exposureLengths.toPlainText()).strip()
+        field_string: str = str(self.ui.exposureLengths.toPlainText()).strip()
         self._darkExposures = []
         self.ui.exposuresMessage.setText("")
-        all_valid : bool = True
-        tokens_of_string : [str] = re.split("\s|,", field_string)
+        tokens_of_string: [str] = re.split(r"\s|,", field_string)
         for token in tokens_of_string:
             # print(f"  Check \"{token}\"")
             if len(token) > 0:
-                value : float = Validators.validFloatInRange(token, 0.0001, 24*60*60)
+                value: float = Validators.valid_float_in_range(token, 0.0001, 24 * 60 * 60)
                 if value is not None:
                     self._darkExposures.append(value)
                 else:

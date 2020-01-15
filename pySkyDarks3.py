@@ -1,3 +1,10 @@
+import sys
+
+from PyQt5 import QtWidgets
+from PyQt5.QtCore import QCoreApplication
+
+from DataModel import DataModel
+from MainWindow import MainWindow
 
 app = QtWidgets.QApplication(sys.argv)
 

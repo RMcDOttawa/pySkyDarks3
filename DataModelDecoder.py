@@ -1,3 +1,9 @@
+import json
+from json import JSONDecoder
+
+from BiasFrameSet import BiasFrameSet
+from DarkFrameSet import DarkFrameSet
+
 
 class DataModelDecoder(JSONDecoder):
     def __init__(self, *args, **kwargs):
@@ -9,12 +15,11 @@ class DataModelDecoder(JSONDecoder):
         if '_type' not in obj:
             return obj
         custom_type_name = obj['_type']
-        result = None
         if custom_type_name == "BiasFrameSet":
             result = BiasFrameSet.decode(obj)
         elif custom_type_name == "DarkFrameSet":
             result = DarkFrameSet.decode(obj)
         else:
             print(f"** Unknown custom object type in decoder: {custom_type_name}")
-            assert(False)
+            assert False
         return result

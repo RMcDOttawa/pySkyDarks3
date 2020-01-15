@@ -3,7 +3,7 @@
 # and safely read and responded to by the worker.
 # Another lock is available externally and is used to ensure only one thread at a time
 # sends TCP commands to the TheSkyX server
-
+from PyQt5.QtCore import QMutex
 
 
 class SessionController:
@@ -25,4 +25,3 @@ class SessionController:
 
     def thread_cancelled(self):
         return not self.thread_running()
-

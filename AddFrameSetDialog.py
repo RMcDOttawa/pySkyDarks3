@@ -1,15 +1,27 @@
+from PyQt5 import uic
+from PyQt5.QtWidgets import QDialog
+
+from BiasFrameSet import BiasFrameSet
+from DarkFrameSet import DarkFrameSet
+from FrameSet import FrameSet
+from Validators import Validators
+
 
 class AddFrameSetDialog(QDialog):
-    def __init__(self, parent):
+    def __init__(self):
         # print("AddFrameSetDialog/init entered")
         QDialog.__init__(self)
         self.ui = uic.loadUi("AddFrameSet.ui")
+        self._numFramesValid = False   # Set as part of field validation
+        self._exposureValid = False
+        self._completedValid = False
+        self._frameSet: FrameSet = FrameSet()
         # print("AddFrameSetDialog/init exits")
 
     def getFrameSet(self) -> FrameSet:  # Will be DarkFrameSet or BiasFrameSet
         return self._frameSet
 
-    def setupUI(self, new_set : bool, frame_set=None):
+    def setupUI(self, new_set: bool, frame_set=None):
         print("AddFrameSetDialog setupUI entered")
 
         # Remember the frame set that was used to set up this window.
@@ -68,7 +80,6 @@ class AddFrameSetDialog(QDialog):
 
     #  Enable the Add button depending on validity of input fields
     def enableControls(self):
-        # print(f"enableControls STUB, fields valid = ({self._numFramesValid},{self._exposureValid},{self._completedValid})")
         self.ui.addButton.setEnabled(self._numFramesValid and self._exposureValid
                                      and (self._completedValid or not (self.ui.completedFrames.isVisible())))
 
@@ -79,7 +90,7 @@ class AddFrameSetDialog(QDialog):
     def numberOfFramesChanged(self):
         proposed_value = self.ui.numberOfFrames.text()
         # print("numberOfFramesChanged: " + proposed_value)
-        if Validators.validIntInRange(proposed_value, 1, 32767) is not None:
+        if Validators.valid_int_in_range(proposed_value, 1, 32767) is not None:
             # print(f"  Set number Of Frames to {int(proposed_value)}")
             self._numFramesValid = True
         else:
@@ -98,7 +109,7 @@ class AddFrameSetDialog(QDialog):
             # Bias frame - exposure field can be blank or zero
             if proposed_value.strip() == "":
                 self._exposureValid = True
-            elif Validators.validFloatInRange(proposed_value, 0, 0) is not None:
+            elif Validators.valid_float_in_range(proposed_value, 0, 0) is not None:
                 self._exposureValid = True
             else:
                 self.ui.exposureSeconds.setText("INVALID")
@@ -106,7 +117,7 @@ class AddFrameSetDialog(QDialog):
         else:
             # Dark frame - exposure field must be positive number
             assert(self.ui.darkButton.isChecked())
-            if Validators.validFloatInRange(proposed_value, 0, 24*60*60) is not None:
+            if Validators.valid_float_in_range(proposed_value, 0, 24 * 60 * 60) is not None:
                 # print(f"  Set exposure time to {float(proposed_value)}")
                 self._exposureValid = True
             else:
@@ -122,7 +133,7 @@ class AddFrameSetDialog(QDialog):
     def completedFramesChanged(self):
         proposed_value = self.ui.completedFrames.text()
         # print("completedFramesChanged, proposed \"" + proposed_value + "\"")
-        if Validators.validIntInRange(proposed_value, 0, 32767) is not None:
+        if Validators.valid_int_in_range(proposed_value, 0, 32767) is not None:
             # print(f"  Set number of Completed Frames to {int(proposed_value)}")
             self._completedValid = True
         else:
@@ -168,6 +179,3 @@ class AddFrameSetDialog(QDialog):
         # print("cancelButtonClicked")
         # Restore the incoming frameset from the saved values
         self.ui.reject()
-
-
-

@@ -1,10 +1,37 @@
+import json
+from datetime import date, time
+from time import strftime
+from typing import List
+
+from PyQt5 import uic, QtWidgets
+from PyQt5.QtCore import QMutex, QItemSelection, QModelIndex, QItemSelectionModel, QTime, QThread, QTimer, \
+    QSettings, QDate
+from PyQt5.QtWidgets import QMainWindow, QDialog, QMessageBox, QHeaderView, QFileDialog
+
+from AddFrameSetDialog import AddFrameSetDialog
+from BulkEntryDialog import BulkEntryDialog
+from DataModel import DataModel
+from DataModelDecoder import DataModelDecoder
+from EndDate import EndDate
+from EndTime import EndTime
+from FrameSet import FrameSet
+from FrameSetPlanTableModel import FrameSetPlanTableModel
+from FrameSetSessionTableModel import FrameSetSessionTableModel
+from RmNetUtils import RmNetUtils
+from SessionController import SessionController
+from SessionThreadWorker import SessionThreadWorker
+from StartDate import StartDate
+from StartTime import StartTime
+from TheSkyX import TheSkyX
+from Validators import Validators
+
 
 class MainWindow(QMainWindow):
     UNSAVED_WINDOW_TITLE = "(Unsaved Document)"
     SAVED_FILE_EXTENSION = ".ewho2"
     RUN_SESSION_TAB_INDEX = 4
     INDENTATION_DEPTH = 3
-    COOLER_POWER_UPDATE_INTERVAL = 30 # Update displayed cooler power this often
+    COOLER_POWER_UPDATE_INTERVAL = 20  # Update displayed cooler power this often
 
     def __init__(self):
         QMainWindow.__init__(self)
@@ -13,10 +40,18 @@ class MainWindow(QMainWindow):
         self._file_path = ""
         self._is_dirty = False
         self._cooler_timer = None
+        self._session_framesets: [FrameSet] = []
+        self._thread_controller: SessionController = None
+        self._mutex: QMutex = None
+
+        # noinspection PyTypeChecker
+        self._session_table_model: FrameSetSessionTableModel = None
+
         self.model = None
         self.ui.setWindowTitle(MainWindow.UNSAVED_WINDOW_TITLE)
         self.ui.coolerPowerLabel.setVisible(False)
         self.ui.coolerPowerValue.setVisible(False)
+        self._plan_table_model = None
 
     def set_is_dirty(self, dirty: bool):
         self._is_dirty = dirty
@@ -123,7 +158,7 @@ class MainWindow(QMainWindow):
             # print("Connecting controls to responders")
             self._controls_connected = True
             self.ui.testConnectionButton.clicked.connect(self.test_connection_button_clicked)
-            self.ui.sendWolNowButton.clicked.connect(self.send_WOL_now_button_clicked)
+            self.ui.sendWolNowButton.clicked.connect(self.send_wol_now_button_clicked)
             self.ui.locName.editingFinished.connect(self.loc_name_edit_finished)
 
             # start date buttons
@@ -174,7 +209,7 @@ class MainWindow(QMainWindow):
             # Catch input: Warm CCD checkbox
             self.ui.warmCCDWhenDone.clicked.connect(self.warm_ccd_when_done_clicked)
 
-            # Catch input: CCD warmup time
+            # Catch input: CCD warm-up time
             self.ui.warmCCDSeconds.editingFinished.connect(self.warm_ccd_seconds_finished)
 
             # Catch input: disconnect camera checkbox
@@ -210,7 +245,7 @@ class MainWindow(QMainWindow):
             # Catch input: server address
             self.ui.serverAddress.editingFinished.connect(self.server_address_finished)
 
-            # Catch input: server portnumber
+            # Catch input: server port number
             self.ui.serverPort.editingFinished.connect(self.server_port_finished)
 
             # Catch input: WOL checkbox
@@ -293,7 +328,7 @@ class MainWindow(QMainWindow):
         # End time enabled when given selected
         self.ui.endTimeEdit.setEnabled(self.model.get_end_time_type() == EndTime.GIVEN_TIME and end_not_when_done)
 
-        # CCD warmup seconds when warmup selected
+        # CCD warm-up seconds when warm-up selected
         self.ui.warmCCDSeconds.setEnabled(self.model.get_warm_up_when_done())
 
         # 6 fields enabled when CCD Regulated is selected
@@ -361,22 +396,22 @@ class MainWindow(QMainWindow):
         self.server_address_finished()
         self.server_port_finished()
         if self.ui.testConnectionButton.isEnabled():
-            success, message = RmNetUtils.testConnection(self.model.get_net_address(), self.model.get_port_number())
+            success, message = RmNetUtils.test_connection(self.model.get_net_address(), self.model.get_port_number())
             if success:
                 self.ui.testConnectionMessage.setText("Connection Successful")
             else:
                 self.ui.testConnectionMessage.setText(message)
 
-    def send_WOL_now_button_clicked(self):
-        print("sendWolNowButtonClicked")
+    def send_wol_now_button_clicked(self):
+        # print("sendWolNowButtonClicked")
         # Lock-in any changes to WOL fields (in case user is focused on one
         # and hasn't hit enter before clicking the test connection button)
         self.wol_mac_address_finished()
         self.wol_broadcast_address_finished()
         if self.ui.sendWolNowButton.isEnabled():
             # Still good to go after locking-in data fields.  Try the WOL
-            success, message = RmNetUtils.sendWakeOnLan(self.model.getWolBroadcastAddress(),
-                                                        self.model.getWolMacAddress())
+            success, message = RmNetUtils.send_wake_on_lan(self.model.getWolBroadcastAddress(),
+                                                           self.model.getWolMacAddress())
             if success:
                 self.ui.testWOLMessage.setText("Sent Successfully")
             else:
@@ -397,8 +432,8 @@ class MainWindow(QMainWindow):
     def time_zone_edit_finished(self):
         # print("timeZoneEditFinished")
         proposed_value: str = self.ui.timeZone.text()
-        converted_value: float = Validators.validIntInRange(proposed_value, -24, +24)
-        if (converted_value is not None):
+        converted_value: float = Validators.valid_int_in_range(proposed_value, -24, +24)
+        if converted_value is not None:
             self.set_is_dirty(converted_value != self.model.get_time_zone())
             self.model.set_time_zone(converted_value)
         else:
@@ -409,8 +444,8 @@ class MainWindow(QMainWindow):
     def latitude_edit_finished(self):
         # print("latitudeEditFinished")
         proposed_value: str = self.ui.latitude.text()
-        converted_value: float = Validators.validFloatInRange(proposed_value, -90.0, +90.0)
-        if (converted_value is not None):
+        converted_value: float = Validators.valid_float_in_range(proposed_value, -90.0, +90.0)
+        if converted_value is not None:
             self.model.set_latitude(converted_value)
             self.set_is_dirty(True)
         else:
@@ -421,8 +456,8 @@ class MainWindow(QMainWindow):
     def longitude_edit_finished(self):
         # print("longitudeEditFinished")
         proposed_value: str = self.ui.longitude.text()
-        converted_value: float = Validators.validFloatInRange(proposed_value, -180.0, +180.0)
-        if (converted_value is not None):
+        converted_value: float = Validators.valid_float_in_range(proposed_value, -180.0, +180.0)
+        if converted_value is not None:
             self.model.set_longitude(converted_value)
             self.set_is_dirty(True)
         else:
@@ -588,8 +623,8 @@ class MainWindow(QMainWindow):
     def warm_ccd_seconds_finished(self):
         # print("warmCCDSecondsFinished")
         proposed_value: str = self.ui.warmCCDSeconds.text()
-        converted_value: int = Validators.validIntInRange(proposed_value, 0, 24 * 60 * 60)
-        if (converted_value is not None):
+        converted_value: int = Validators.valid_int_in_range(proposed_value, 0, 24 * 60 * 60)
+        if converted_value is not None:
             self.model.set_warm_up_when_done_secs(converted_value)
             self.set_is_dirty(True)
         else:
@@ -623,8 +658,8 @@ class MainWindow(QMainWindow):
     def target_temperature_finished(self):
         # print("targetTemperatureFinished")
         proposed_value: str = self.ui.targetTemperature.text()
-        converted_value: float = Validators.validFloatInRange(proposed_value, -273.0, +100.0)
-        if (converted_value is not None):
+        converted_value: float = Validators.valid_float_in_range(proposed_value, -273.0, +100.0)
+        if converted_value is not None:
             self.model.set_temperature_target(converted_value)
             self.set_is_dirty(True)
         else:
@@ -634,8 +669,8 @@ class MainWindow(QMainWindow):
     def temperature_tolerance_finished(self):
         # print("temperatureToleranceFinished")
         proposed_value: str = self.ui.temperatureTolerance.text()
-        converted_value: float = Validators.validFloatInRange(proposed_value, -50.0, +50.0)
-        if (converted_value is not None):
+        converted_value: float = Validators.valid_float_in_range(proposed_value, -50.0, +50.0)
+        if converted_value is not None:
             self.model.set_temperature_within(converted_value)
             self.set_is_dirty(True)
         else:
@@ -645,7 +680,7 @@ class MainWindow(QMainWindow):
     def cooling_check_interval_finished(self):
         # print("coolingCheckIntervalFinished")
         proposed_value: str = self.ui.coolingCheckInterval.text()
-        converted_value: float = Validators.validFloatInRange(proposed_value, 0.0, 10 * 60)
+        converted_value: float = Validators.valid_float_in_range(proposed_value, 0.0, 10 * 60)
         if converted_value is not None:
             self.model.set_temperature_settle_seconds(converted_value)
             self.set_is_dirty(True)
@@ -656,7 +691,7 @@ class MainWindow(QMainWindow):
     def cooling_max_try_time_finished(self):
         # print("coolingMaxTryTimeFinished")
         proposed_value: str = self.ui.coolingMaxTryTime.text()
-        converted_value: float = Validators.validFloatInRange(proposed_value, 0.0, 12 * 60 * 60)
+        converted_value: float = Validators.valid_float_in_range(proposed_value, 0.0, 12 * 60 * 60)
         if converted_value is not None:
             self.model.set_max_cooling_wait_time(converted_value)
             self.set_is_dirty(True)
@@ -667,7 +702,7 @@ class MainWindow(QMainWindow):
     def cooling_max_retry_count_finished(self):
         # print("coolingMaxRetryCountFinished")
         proposed_value: str = self.ui.coolingMaxRetryCount.text()
-        converted_value: int = Validators.validIntInRange(proposed_value, 0, 100)
+        converted_value: int = Validators.valid_int_in_range(proposed_value, 0, 100)
         if converted_value is not None:
             self.model.set_temperature_fail_retry_count(converted_value)
             self.set_is_dirty(True)
@@ -678,7 +713,7 @@ class MainWindow(QMainWindow):
     def cooling_retry_delay_finished(self):
         # print("coolingRetryDelayFinished")
         proposed_value: str = self.ui.coolingRetryDelay.text()
-        converted_value: float = Validators.validFloatInRange(proposed_value, 0, 12 * 60 * 60)
+        converted_value: float = Validators.valid_float_in_range(proposed_value, 0, 12 * 60 * 60)
         if converted_value is not None:
             self.model.set_temperature_fail_retry_delay_seconds(converted_value)
             self.set_is_dirty(True)
@@ -689,7 +724,7 @@ class MainWindow(QMainWindow):
     def temp_rise_abort_threshold_finished(self):
         # print("tempRiseAbortThresholdFinished")
         proposed_value: str = self.ui.tempRiseAbortThreshold.text()
-        converted_value: float = Validators.validFloatInRange(proposed_value, 0.001, 100)
+        converted_value: float = Validators.valid_float_in_range(proposed_value, 0.001, 100)
         if converted_value is not None:
             self.model.set_temperature_abort_rise_limit(converted_value)
             self.set_is_dirty(True)
@@ -700,7 +735,7 @@ class MainWindow(QMainWindow):
     def server_address_finished(self):
         # print("serverAddressFinished")
         proposed_value: str = self.ui.serverAddress.text()
-        if RmNetUtils.validServerAddress(proposed_value):
+        if RmNetUtils.valid_server_address(proposed_value):
             self.model.set_net_address(proposed_value)
             self.set_is_dirty(True)
         else:
@@ -710,7 +745,7 @@ class MainWindow(QMainWindow):
     def wol_mac_address_finished(self):
         # print("wolMacAddressFinished")
         proposed_value: str = self.ui.wolMacAddress.text()
-        if RmNetUtils.validMACAddress(proposed_value):
+        if RmNetUtils.valid_mac_address(proposed_value):
             self.model.setWolMacAddress(proposed_value)
             self.set_is_dirty(True)
         else:
@@ -720,7 +755,7 @@ class MainWindow(QMainWindow):
     def server_port_finished(self):
         # print("serverPortFinished")
         proposed_value: str = self.ui.serverPort.text()
-        converted_value: int = Validators.validIntInRange(proposed_value, 0, 65535)
+        converted_value: int = Validators.valid_int_in_range(proposed_value, 0, 65535)
         if converted_value is not None:
             self.model.set_port_number(proposed_value)
             self.set_is_dirty(True)
@@ -731,7 +766,7 @@ class MainWindow(QMainWindow):
     def send_wol_seconds_before_finished(self):
         # print("sendWOLSecondsBeforeFinished")
         proposed_value: str = self.ui.sendWOLSecondsBefore.text()
-        converted_value: float = Validators.validFloatInRange(proposed_value, 0., 24 * 60 * 60)
+        converted_value: float = Validators.valid_float_in_range(proposed_value, 0., 24 * 60 * 60)
         if converted_value is not None:
             self.model.set_send_wol_seconds_before(converted_value)
             self.set_is_dirty(True)
@@ -742,7 +777,7 @@ class MainWindow(QMainWindow):
     def wol_broadcast_address_finished(self):
         # print("wolBroadcastAddressFinished")
         proposed_value: str = self.ui.wolBroadcastAddress.text()
-        if RmNetUtils.validIPAddress(proposed_value):
+        if RmNetUtils.valid_ip_address(proposed_value):
             self.model.setWolBroadcastAddress(proposed_value)
             self.set_is_dirty(True)
         else:
@@ -751,12 +786,12 @@ class MainWindow(QMainWindow):
 
     # Buttons for manipulating the Frames plan
 
-    # The "add framset" button has been clicked.  Open a dialog form where
+    # The "add frameset" button has been clicked.  Open a dialog form where
     # the user can specify the details of the frameset.  Modal wait for the
     # form to be submitted, and deal with the results if not cancelled.
     def add_frame_button_clicked(self):
         # print("addFrameButtonClicked entered")
-        dialog: AddFrameSetDialog = AddFrameSetDialog(self)
+        dialog: AddFrameSetDialog = AddFrameSetDialog()
         dialog.setupUI(new_set=True)
         result: QDialog.DialogCode = dialog.ui.exec_()
         # print(f"  Dialog returned with {result}")
@@ -789,7 +824,7 @@ class MainWindow(QMainWindow):
         # print(f"  Editing: {frame_editing}")
 
         # Open the add/edit dialog with this frame set filled in t the fields
-        dialog: AddFrameSetDialog = AddFrameSetDialog(self)
+        dialog: AddFrameSetDialog = AddFrameSetDialog()
         dialog.setupUI(new_set=False, frame_set=frame_editing)
         result: QDialog.DialogCode = dialog.ui.exec_()
         # print(f"  Dialog returned with {result}")
@@ -829,9 +864,8 @@ class MainWindow(QMainWindow):
     # binning values, and we'll generate every combination of those.
 
     def bulk_add_button_clicked(self):
-        # print("onbulkAddButtonClicked entered")
         rows_selected = self.frame_plan_selected_rows()
-        dialog: BulkEntryDialog = BulkEntryDialog(self)
+        dialog: BulkEntryDialog = BulkEntryDialog()
         result: QDialog.DialogCode = dialog.ui.exec_()
         if result == QDialog.Accepted:
             framesets_to_add: [FrameSet] = self.model.generate_frame_sets(dialog.getNumBiasFrames(),
@@ -852,13 +886,12 @@ class MainWindow(QMainWindow):
                     insertion_point += 1
         dialog.close()
         self.enable_controls()
-        # print("onbulkAddButtonClicked exits")
 
     # "Reset Completed" has been clicked.
     #  Do a "are you sure" dialog, then set all the completed counts in the plan to zero
     def reset_completed_counts(self):
         # print("reset_completed_counts")
-        confirmation_dialog : QMessageBox= QMessageBox()
+        confirmation_dialog: QMessageBox = QMessageBox()
         confirmation_dialog.setWindowTitle("Confirm Reset")
         confirmation_dialog.setText("Confirm: Reset all the completed counts to zero?")
         confirmation_dialog.setInformativeText("This will cause all the plan's frame sets to be re-acquired")
@@ -874,7 +907,6 @@ class MainWindow(QMainWindow):
             self.ui.setWindowTitle(MainWindow.UNSAVED_WINDOW_TITLE)
         self.enable_controls()
         self.set_is_dirty(True)
-
 
     # One or more lines are selected, not including the first one.  Move them
     # all up one space.
@@ -904,8 +936,8 @@ class MainWindow(QMainWindow):
         rows_selected: [int] = self.frame_plan_selected_rows()
         # Handle the rows from bottom of screen upward
         rows_selected.sort(reverse=True)
-        assert (len(rows_selected) > 0)
-        assert (rows_selected[0] != len(rows_selected) - 1)
+        assert (len(rows_selected) > 0)  # Can't be here unless something is selected
+        assert (rows_selected[0] != len(self.model.get_saved_frame_sets()) - 1)  # Bottom row not allowed
 
         for row_index in rows_selected:
             # To move a row down, we delete it from its current position and insert it one lower
@@ -985,11 +1017,13 @@ class MainWindow(QMainWindow):
 
             session_time_info = self.model.get_session_time_info()
             session_temperature_info = self.model.get_session_temperature_info()
-            self._worker_object = SessionThreadWorker(self._session_framesets, session_time_info, self._thread_controller,
+            self._worker_object = SessionThreadWorker(self._session_framesets, session_time_info,
+                                                      self._thread_controller,
                                                       session_temperature_info,
                                                       self.model.get_send_wake_on_lan_before_starting(),
                                                       self.model.get_send_wol_seconds_before(),
-                                                      self.model.getWolBroadcastAddress(), self.model.getWolMacAddress(),
+                                                      self.model.getWolBroadcastAddress(),
+                                                      self.model.getWolMacAddress(),
                                                       self.model.get_net_address(), int(self.model.get_port_number()),
                                                       self.model.get_disconnect_when_done())
             self._worker_object.consoleLine.connect(self.add_line_to_console_frame)
@@ -1020,7 +1054,7 @@ class MainWindow(QMainWindow):
             # We didn't go ahead because of "cancel" at file-save.  Clean up as though
             # the thread ran and completed properly
             self.thread_finished()
-            
+
     def thread_finished(self):
         # print("threadFinished")
         self.ui.progressBar.setValue(0)
@@ -1036,7 +1070,6 @@ class MainWindow(QMainWindow):
         # print("cooler_started")
         # Get our own instance of the server for talking to TheSkyX
         self._cooling_server = TheSkyX(self.model.get_net_address(), int(self.model.get_port_number()))
-        self.cooler_timer_fired()
 
         # Set up a timer to update the cooling power display occasionally
         timer = QTimer()
@@ -1075,7 +1108,7 @@ class MainWindow(QMainWindow):
         if self.model.get_auto_save_after_each_frame():
             self.save_menu_triggered()
 
-    def add_line_to_console_frame(self, message: str, level: str):
+    def add_line_to_console_frame(self, message: str, level: int):
         # print(f"addLineToConsoleFrame({message})")
         self._mutex.lock()
         time_formatted = strftime("%H:%M:%S ")
@@ -1099,7 +1132,7 @@ class MainWindow(QMainWindow):
                                                   FrameSet.NUMBER_OF_DISPLAY_FIELDS - 1)
         selection.select(model_index_top_left, model_index_bottom_right)
         # Set the selection to that  row
-        selection_model: QItemSelectionModel = self.ui.sessionTable.selectionModel();
+        selection_model: QItemSelectionModel = self.ui.sessionTable.selectionModel()
         selection_model.clearSelection()
         selection_model.select(selection, QItemSelectionModel.Select)
         # Scroll to ensure the selected row is in view
@@ -1208,7 +1241,6 @@ class MainWindow(QMainWindow):
         if last_opened_path is None:
             last_opened_path = ""
 
-
         # Get file name to open
         file_name, _ = QFileDialog.getOpenFileName(self, "Open File", last_opened_path,
                                                    f"FrameSet Plans(*{MainWindow.SAVED_FILE_EXTENSION})")
@@ -1276,7 +1308,7 @@ class MainWindow(QMainWindow):
 
     # Info about frame plan table
     def frame_plan_selected_rows(self) -> [int]:
-        selection_model: QItemSelectionModel = self.ui.framesPlanTable.selectionModel();
+        selection_model: QItemSelectionModel = self.ui.framesPlanTable.selectionModel()
         indices: List[QModelIndex] = selection_model.selectedRows()
         selected_rows = []
         for index in indices:
@@ -1284,7 +1316,7 @@ class MainWindow(QMainWindow):
         return selected_rows
 
     # Select the given row indices in the frame plan table
-    def frame_plan_select_rows(self, indices: [int]):
+    def frame_plan_select_rows(self, indices: List[int]):
         # Make up an item selection object for the rows in question, and all the columns
         selection: QItemSelection = QItemSelection()
         for row_index in indices:
@@ -1295,7 +1327,7 @@ class MainWindow(QMainWindow):
             selection.select(model_index_top_left, model_index_bottom_right)
 
         # Set the selection to that list of rows
-        selection_model: QItemSelectionModel = self.ui.framesPlanTable.selectionModel();
+        selection_model: QItemSelectionModel = self.ui.framesPlanTable.selectionModel()
         selection_model.clearSelection()
         selection_model.select(selection, QItemSelectionModel.Select)
 
@@ -1355,4 +1387,3 @@ class MainWindow(QMainWindow):
         self._mutex.lock()
         self.ui.cameraPath.setText(autosave_path)
         self._mutex.unlock()
-

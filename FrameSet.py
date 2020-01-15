@@ -1,20 +1,25 @@
+from abc import ABC, abstractmethod
 
-class FrameSet (ABC):
+
+class FrameSet(ABC):
     # Attributes common to all subclasses
-    #_numberOfFrames = 16
-    #_binning = 1
-    #_numberComplete = 0
+    # _numberOfFrames = 16
+    # _binning = 1
+    # _numberComplete = 0
 
     NUMBER_OF_DISPLAY_FIELDS = 5
 
     # Getters and Setters
     def get_number_of_frames(self): return self._numberOfFrames
+
     def set_number_of_frames(self, value):  self._numberOfFrames = value
 
     def get_binning(self): return self._binning
+
     def set_binning(self, value):  self._binning = value
 
     def get_number_complete(self): return self._numberComplete
+
     def set_number_complete(self, value):  self._numberComplete = value
 
     # Creators
@@ -25,8 +30,6 @@ class FrameSet (ABC):
         self._numberOfFrames = number_of_frames
         self._binning = binning
         self._numberComplete = number_complete
-
-
 
     @abstractmethod
     def encode(self):

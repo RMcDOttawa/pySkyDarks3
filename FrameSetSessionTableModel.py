@@ -1,6 +1,9 @@
+from PyQt5.QtCore import QAbstractTableModel, QModelIndex, QVariant, Qt
 
-class FrameSetSessionTableModel (QAbstractTableModel):
+from FrameSet import FrameSet
 
+
+class FrameSetSessionTableModel(QAbstractTableModel):
     _columnHeaders = ("Frames", "Type", "Seconds", "Binned", "Done")
 
     # Constructor takes and keeps a pointer to the data model
@@ -20,7 +23,7 @@ class FrameSetSessionTableModel (QAbstractTableModel):
         column_num: int = index.column()
         # print(f"data(({row_num},{column_num}),{role})")
         if role == Qt.DisplayRole:
-            assert((row_num >= 0) & (row_num < len(self._framesets_list)))
+            assert ((row_num >= 0) & (row_num < len(self._framesets_list)))
             the_frame_set: FrameSet = self._framesets_list[row_num]
             result: QVariant = QVariant(the_frame_set.fieldNumberAsString(column_num))
         else:
@@ -31,7 +34,7 @@ class FrameSetSessionTableModel (QAbstractTableModel):
         # print(f"headerData({column_number}, {orientation}, {role}) STUB")
         result = QVariant()
         if (role == Qt.DisplayRole) & (orientation == Qt.Horizontal):
-            assert((column_number >= 0) & (column_number < len(self._columnHeaders)))
+            assert ((column_number >= 0) & (column_number < len(self._columnHeaders)))
             result = self._columnHeaders[column_number]
         return result
 
@@ -40,7 +43,7 @@ class FrameSetSessionTableModel (QAbstractTableModel):
     # that the table view updates.
     def table_row_changed(self, row_index: int):
         # print(f"FrameSetSessionTableModel/table_row_changed({row_index})")
-        assert(0 <= row_index < len(self._framesets_list))
+        assert (0 <= row_index < len(self._framesets_list))
         top_left_index = self.index(row_index, 0)
         bottom_right_index = self.index(row_index, len(self._columnHeaders) - 1)
         roles = [Qt.DisplayRole] * len(self._columnHeaders)

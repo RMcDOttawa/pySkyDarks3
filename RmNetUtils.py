@@ -1,19 +1,23 @@
 #  General network utilities
+import re
+import socket
+
+
 class RmNetUtils:
-    WAKE_ON_LAN_PORT  = 9
+    WAKE_ON_LAN_PORT = 9
     MAC_ADDRESS_LENGTH = 6
     IP4_ADDRESS_LENGTH = 4
 
     @classmethod
-    def parseIP4Address(cls, proposed_value : str) -> [int]:
-        result : [int] = None
-        accumulate : [int] = []
-        tokens : [str] = proposed_value.split(".")
+    def parse_ip4_address(cls, proposed_value: str) -> [int]:
+        result: [int] = None
+        accumulate: [int] = []
+        tokens: [str] = proposed_value.split(".")
         if len(tokens) == RmNetUtils.IP4_ADDRESS_LENGTH:
-            valid : bool = True
+            valid: bool = True
             for this_token in tokens:
                 try:
-                    token_parsed : int = int(this_token)
+                    token_parsed: int = int(this_token)
                     if (token_parsed >= 0) & (token_parsed <= 255):
                         accumulate.append(token_parsed)
                     else:
@@ -26,32 +30,32 @@ class RmNetUtils:
                 finally:
                     pass
             if valid:
-                result =  accumulate
+                result = accumulate
         return result
 
     @classmethod
-    def validIPAddress(cls, proposed_value : str) -> bool:
-        address_bytes : [int] = RmNetUtils.parseIP4Address(proposed_value)
+    def valid_ip_address(cls, proposed_value: str) -> bool:
+        address_bytes: [int] = RmNetUtils.parse_ip4_address(proposed_value)
         return address_bytes is not None
 
     @classmethod
-    def validServerAddress(cls, proposed_value : str) -> bool:
+    def valid_server_address(cls, proposed_value: str) -> bool:
         # print(f"validServerAddress({proposed_value})")
-        result : bool = False
-        if RmNetUtils.validIPAddress(proposed_value):
+        result: bool = False
+        if RmNetUtils.valid_ip_address(proposed_value):
             result = True
-        elif RmNetUtils.validHostName(proposed_value):
+        elif RmNetUtils.valid_host_name(proposed_value):
             result = True
         return result
 
     @classmethod
-    def validHostName(cls, proposed_value: str) -> bool:
+    def valid_host_name(cls, proposed_value: str) -> bool:
         # print(f"validHostName({proposed_value})")
-        host_name_trimmed : str = proposed_value.strip()
-        valid : bool = False
+        host_name_trimmed: str = proposed_value.strip()
+        valid: bool = False
         if (len(host_name_trimmed) > 0) & (len(host_name_trimmed) <= 253):
-            tokens : [str] = host_name_trimmed.split(".")
-            valid : bool = True
+            tokens: [str] = host_name_trimmed.split(".")
+            valid: bool = True
             for this_token in tokens:
                 this_token_upper = this_token.upper()
                 # print(f"   Validating token: {this_token_upper}");
@@ -70,14 +74,14 @@ class RmNetUtils:
                         if this_token_upper.startswith("-"):
                             valid = False
                             break
-        return valid;
+        return valid
 
     @classmethod
-    def parseMACAddress(cls, proposed_address : str) -> str:
+    def parse_mac_address(cls, proposed_address: str) -> str:
         uppercase = proposed_address.upper()
-        cleaned = uppercase.replace("-","") \
-                        .replace(".","") \
-                        .replace(":","")
+        cleaned = uppercase.replace("-", "") \
+            .replace(".", "") \
+            .replace(":", "")
         result = None
         if len(cleaned) == (2 * RmNetUtils.MAC_ADDRESS_LENGTH):
             match = re.match(r"^[A-Z0-9]+$", cleaned)
@@ -86,18 +90,18 @@ class RmNetUtils:
         return result
 
     @classmethod
-    def validMACAddress(cls,proposed_address : str) -> bool:
-        clean_mac_address : str = RmNetUtils.parseMACAddress(proposed_address)
+    def valid_mac_address(cls, proposed_address: str) -> bool:
+        clean_mac_address: str = RmNetUtils.parse_mac_address(proposed_address)
         return clean_mac_address is not None
 
     # Test whether we can open a socket to a given server.
     # Return a tuple with a success indicator (bool) and a message if unsuccessful
 
     @classmethod
-    def testConnection(cls, address_string : str, port_number : str) -> [bool, str]:
+    def test_connection(cls, address_string: str, port_number: str) -> [bool, str]:
         # print(f"testConnection({address_string},{port_number})")
-        success : bool = False
-        message : str = "(Uncaught Error)"
+        success: bool = False
+        message: str = "(Uncaught Error)"
         try:
             # Create socket
             test_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -115,12 +119,12 @@ class RmNetUtils:
         return [success, message]
 
     @classmethod
-    def sendWakeOnLan(cls, broadcast_address : str, mac_address : str) -> (bool,str):
+    def send_wake_on_lan(cls, broadcast_address: str, mac_address: str) -> (bool, str):
         # print(f"sendWakeOnLan({broadcast_address},{mac_address})")
-        success : bool = False
+        success: bool = False
         message = "(Unknown Error)"
         try:
-            magic_packet = RmNetUtils.makeMagicPacket(mac_address)
+            magic_packet = RmNetUtils.make_magic_packet(mac_address)
             # Create UDP socket
             wol_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             wol_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
@@ -146,11 +150,11 @@ class RmNetUtils:
     #       all as internal bytes, strings represented in hex
 
     @classmethod
-    def makeMagicPacket(cls, mac_address: str) -> bytes :
-        mac_address_part = RmNetUtils.parseMACAddress(mac_address)
-        assert(len(mac_address_part) == (2 * RmNetUtils.MAC_ADDRESS_LENGTH)) # 2* for hex string
-        leading_FF_part = "FF" * 6
-        magic_as_hex = leading_FF_part + 16*mac_address_part
+    def make_magic_packet(cls, mac_address: str) -> bytes:
+        mac_address_part = RmNetUtils.parse_mac_address(mac_address)
+        assert (len(mac_address_part) == (2 * RmNetUtils.MAC_ADDRESS_LENGTH))  # 2* for hex string
+        leading_ff_part = "FF" * 6
+        magic_as_hex = leading_ff_part + 16 * mac_address_part
         result = bytes.fromhex(magic_as_hex)
-        assert(len(result) == 102)
+        assert (len(result) == 102)
         return result

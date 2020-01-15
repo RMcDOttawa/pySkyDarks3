@@ -1,7 +1,5 @@
-
-
-
 # The ways that the session "start date" can be specified
+
 
 class StartDate:
     NOW = "StartDate-Now"  # Start immediately, as soon as "begin" is clicked
@@ -10,4 +8,4 @@ class StartDate:
 
     def __init__(self):
         print("StartDate should not be instantiated")
-        assert(False)
+        assert False

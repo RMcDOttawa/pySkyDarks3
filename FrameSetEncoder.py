@@ -1,3 +1,9 @@
+from json import JSONEncoder
+
+
+class FrameType(object):
+    pass
+
 
 class FrameSetEncoder(JSONEncoder):
 

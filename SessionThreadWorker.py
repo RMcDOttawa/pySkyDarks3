@@ -1,8 +1,22 @@
+from datetime import datetime, timedelta
+from time import sleep
+
+from PyQt5.QtCore import QObject, pyqtSignal
+
+from BiasFrameSet import BiasFrameSet
+from CameraCoolingInfo import CameraCoolingInfo
+from DarkFrameSet import DarkFrameSet
+from FrameSet import FrameSet
+from RmNetUtils import RmNetUtils
+from SessionController import SessionController
+from SessionTimeInfo import SessionTimeInfo
+from TheSkyX import TheSkyX
+
 
 class SessionThreadWorker(QObject):
     PROGRESS_UPDATE_INTERVAL = 2  # Update progress bar every this many seconds
     CAMERA_RESYNC_CHECK_INTERVAL = .5  # After camera should be done, check in every this many seconds
-    CAMERA_RESYNC_TIMEOUT = 3 * 60  # Time out if camer doesn't resync after this many seconds
+    CAMERA_RESYNC_TIMEOUT = 3 * 60  # Time out if camera doesn't resync after this many seconds
 
     finished = pyqtSignal()
     startRowIndex = pyqtSignal(int)
@@ -10,9 +24,9 @@ class SessionThreadWorker(QObject):
     startProgressBar = pyqtSignal(int)  # Initialize progress bar, for maximum this much
     updateProgressBar = pyqtSignal(int)  # Update the bar with this value of progress toward maximum
     displayCameraPath = pyqtSignal(str)  # Display given camera autosave path in the UI
-    frameAcquired = pyqtSignal(FrameSet,int) # A frame has been successfully acquired
-    coolerStarted = pyqtSignal() # Tell main UI that we are running the cooler
-    coolerStopped = pyqtSignal() # Tell main UI that we have stopped the cooler
+    frameAcquired = pyqtSignal(FrameSet, int)  # A frame has been successfully acquired
+    coolerStarted = pyqtSignal()  # Tell main UI that we are running the cooler
+    coolerStopped = pyqtSignal()  # Tell main UI that we have stopped the cooler
 
     def __init__(self,
                  frame_set_list: [FrameSet],  # Frames to be acquired
@@ -77,12 +91,10 @@ class SessionThreadWorker(QObject):
         self.finished.emit()
         # print("run_session Ended")
 
-
-
     # Wait until an appropriate start time.
     #  This might be
     #       - No wait (start now); or
-    #       - Wait until a given time, optionaly reduced by Wake-On-Lan lead time
+    #       - Wait until a given time, optionally reduced by Wake-On-Lan lead time
     # return a success indicator
     def wait_for_start_time(self, start_now: bool, start_time: datetime,
                             wake_on_lan_before: bool, wake_on_lan_lead_seconds: float) -> bool:
@@ -94,7 +106,8 @@ class SessionThreadWorker(QObject):
             success = self.sleep_with_progress_bar(wait_seconds)
         return success
 
-    def start_wait_seconds(self, start_now: bool, start_time: datetime,
+    @staticmethod
+    def start_wait_seconds(start_now: bool, start_time: datetime,
                            wake_on_lan_before: bool, wake_on_lan_lead_seconds: float) -> float:
         # print(f"start_wait_seconds({start_now},{start_time},{wake_on_lan_before},{wake_on_lan_lead_seconds})")
         # Start with how long to wait
@@ -118,19 +131,20 @@ class SessionThreadWorker(QObject):
 
         return wait_time
 
-    def casual_interval_format(self, seconds: float) -> str:
+    @staticmethod
+    def casual_interval_format(seconds: float) -> str:
         # print(f"casual_interval_format({seconds})")
         hours_string = ""
         minutes_string = ""
         seconds_string = ""
         seconds_in_hour = 60 * 60
         if seconds > seconds_in_hour:
-            hours: int = seconds // seconds_in_hour
+            hours: int = round(seconds) // seconds_in_hour
             seconds -= hours * seconds_in_hour
             hours_string = str(hours) + " hour" + ("s" if hours > 1 else "")
 
         if seconds > 60:
-            minutes: int = seconds // 60
+            minutes: int = round(seconds) // 60
             seconds -= minutes * 60
             minutes_string = str(minutes) + " minute" + ("s" if minutes > 1 else "")
 
@@ -148,13 +162,13 @@ class SessionThreadWorker(QObject):
 
         return result
 
-    # Sleep the given number of seconds, emiting a signal to let the
+    # Sleep the given number of seconds, emitting a signal to let the
     # main UI window update a progress bar.   Because we want to update the
     # progress bar periodically, we don't just do a sleep for the total number
     # of seconds.  Instead, we sleep in small increments and keep watch on the
     # current time and the time we need to finish the sleep.
     # we normally use this function (rather than the no-progress-bar version) for longer
-    # sleeps such as waiting for the camera to cool.  So the fact that the slep may exceed
+    # sleeps such as waiting for the camera to cool.  So the fact that the sleep may exceed
     # the requested amount by "update_interval" (2 seconds) is not a concern
     def sleep_with_progress_bar(self, wait_seconds: float) -> bool:
         # print(f"sleep_with_progress_bar({wait_seconds})")
@@ -203,7 +217,7 @@ class SessionThreadWorker(QObject):
         success = True
         if wake_requested:
             self.console("Sending Wake-On-Lan", 1)
-            (success, message) = RmNetUtils.sendWakeOnLan(broadcast_address, mac_address)
+            (success, message) = RmNetUtils.send_wake_on_lan(broadcast_address, mac_address)
             if not success:
                 self.console("Wake on LAN error: " + message, 2)
             else:
@@ -212,7 +226,8 @@ class SessionThreadWorker(QObject):
         return success
 
     # Connect to TheSkyX as a connection test and, while we're at it, get and return the camera autosave path
-    def get_camera_path(self, server: TheSkyX) -> (bool, str):
+    @staticmethod
+    def get_camera_path(server: TheSkyX) -> (bool, str):
         # print(f"get_camera_path()")
         (success, path, message) = server.get_camera_autosave_path()
         return success, path, message
@@ -228,7 +243,6 @@ class SessionThreadWorker(QObject):
     def start_cooling_camera(self, server: TheSkyX, cooling_info: CameraCoolingInfo) -> bool:
         # print("start_cooling_camera")
         success = True
-        message = ""
         if cooling_info.is_regulated:
             # Camera is regulated, so we'll start cooling toward the target
             self.console(f"Start cooling camera to target {cooling_info.target_temperature}", 1)
@@ -300,13 +314,13 @@ class SessionThreadWorker(QObject):
                 total_attempts -= 1
                 attempt_number += 1
                 (success, error) = self.one_cooling_attempt(server,
-                                                   cooling_info.target_temperature,
-                                                   cooling_info.cooling_check_interval,
-                                                   cooling_info.target_tolerance,
-                                                   time_to_wait)
+                                                            cooling_info.target_temperature,
+                                                            cooling_info.cooling_check_interval,
+                                                            cooling_info.target_tolerance,
+                                                            time_to_wait)
                 if success or error:
                     # We did it, no further attempts needed;
-                    # or, a system error has occured, just give up and pass the error upward
+                    # or, a system error has occurred, just give up and pass the error upward
                     break
                 else:
                     # Failed to cool to target.  Turn off cooling
@@ -314,10 +328,12 @@ class SessionThreadWorker(QObject):
                     # If more attempts are remaining, wait the specified time before trying again
                     if total_attempts > 0 and self._controller.thread_running():
                         self.console(
-                            f"Cooling failed to reach target temperature of {cooling_info.target_temperature} after {cooling_info.max_time_to_try} seconds.",
+                            f"Cooling failed to reach target temperature of {cooling_info.target_temperature}"
+                            + f" after {cooling_info.max_time_to_try} seconds.",
                             1)
                         self.console(
-                            f"Waiting {cooling_info.cooling_retry_delay} seconds before attempt {attempt_number + 1}", 2)
+                            f"Waiting {cooling_info.cooling_retry_delay} seconds before attempt {attempt_number + 1}",
+                            2)
                         self.sleep_with_progress_bar(cooling_info.cooling_retry_delay)
                         if self._controller.thread_running():
                             time_to_wait = cooling_info.max_time_to_try
@@ -326,13 +342,13 @@ class SessionThreadWorker(QObject):
             if not success and self._controller.thread_running():
                 self.console("Failed to cool to target temperature", 1)
         else:
-            success = True   # Not temp regulated, so we just succeed
+            success = True  # Not temp regulated, so we just succeed
         return success
 
     # Make a single attempt to cool the chip to the target temperature.
     # Check the temperature at regular intervals.  Consider it success if we get within a given tolerance
     # of the target.  If we don't reach the target after a given time, fail
-    # REturn two flags.  One is whether we cooled successfully (might not have but no error), 2nd is an error
+    # Return two flags.  One is whether we cooled successfully (might not have but no error), 2nd is an error
 
     def one_cooling_attempt(self, server: TheSkyX,
                             target_temperature: float,
@@ -355,7 +371,7 @@ class SessionThreadWorker(QObject):
             (read_temp_successfully, current_camera_temperature, message) = server.get_camera_temperature()
             if read_temp_successfully:
                 self.console(f"Camera temperature: {current_camera_temperature}", 2)
-                temperature_difference = math.fabs(current_camera_temperature - target_temperature)
+                temperature_difference = abs(current_camera_temperature - target_temperature)
                 if temperature_difference <= target_tolerance:
                     success = True
                     self.console("Target temperature reached", 2)
@@ -372,7 +388,7 @@ class SessionThreadWorker(QObject):
     # Sleep for the given amount of time.  No progress bar signals emitted.
     # Sleep in little increments, not one big hunk, and check if this thread
     # has been cancelled between increments.
-    def sleep_no_progress_bar(self, sleep_time: int):
+    def sleep_no_progress_bar(self, sleep_time: float):
         time_slept = 0
         while time_slept < sleep_time and self._controller.thread_running():
             # Sleep a chunk of time, or the remaining time, whichever is smaller
@@ -411,7 +427,7 @@ class SessionThreadWorker(QObject):
 
     def acquire_frames(self,
                        server: TheSkyX,
-                       frame_set_list : [FrameSet],
+                       frame_set_list: [FrameSet],
                        cooling_info: CameraCoolingInfo,
                        time_info: SessionTimeInfo) -> bool:
         # print(f"acquire_frames entered")
@@ -422,7 +438,7 @@ class SessionThreadWorker(QObject):
             frame_set = frame_set_list[row_index]
             # print(f"  Acquiring #{row_index}: {frame_set}")
             if self._controller.thread_cancelled():
-                self.console("Image acquisition cancelled",1)
+                self.console("Image acquisition cancelled", 1)
                 success = False
             if self.end_time_exceeded(time_info):
                 # self.console("Session end-time has passed, stopping session", 1)
@@ -432,7 +448,8 @@ class SessionThreadWorker(QObject):
                 # print("Stopping acquisition by temperature rising")
                 success = False
                 break
-            (success, continue_acquisition) = self.acquire_frame_set(server, frame_set, row_index, cooling_info, time_info)
+            (success, continue_acquisition) = self.acquire_frame_set(server, frame_set, row_index, cooling_info,
+                                                                     time_info)
             if success:
                 # print("Frame Set acquired successfully")
                 if not continue_acquisition:
@@ -449,7 +466,7 @@ class SessionThreadWorker(QObject):
     #   The camera doesn't know that and might still be imaging.  In fact, it almost certainly is.
     #   Check if image is still in progress and send an Abort if so
     def abort_image_from_cancellation(self, server):
-        print("abort_image_from_cancellation")
+        # print("abort_image_from_cancellation")
         (command_success, is_complete, message) = server.get_exposure_is_complete()
         if command_success and not is_complete:
             server.abort_image()
@@ -457,7 +474,6 @@ class SessionThreadWorker(QObject):
     #   Has the end time of this session been exceeded?
     def end_time_exceeded(self, time_info: SessionTimeInfo) -> bool:
         # print("end_time_exceeded")
-        time_exceeded = False
         if time_info.get_end_when_done():
             # print("  We're doing \"end when done\", so time can never be exceeded.")
             time_exceeded = False
@@ -477,15 +493,17 @@ class SessionThreadWorker(QObject):
         if cooling_info.is_regulated and cooling_info.abort_on_temperature_rise:
             (success, temperature, error) = server.get_camera_temperature()
             if success:
-                # print(f"  Temperature {temperature}, target {cooling_info.target_temperature}, threshold {cooling_info.abort_temperature_threshold}")
                 if (temperature - cooling_info.target_temperature) > cooling_info.abort_temperature_threshold:
-                    self.console(f"Camera temp {temperature} exceeds target {cooling_info.target_temperature} by more than {cooling_info.abort_temperature_threshold}",1)
+                    self.console(
+                        f"Camera temp {temperature} exceeds target {cooling_info.target_temperature}"
+                        + f"by more than {cooling_info.abort_temperature_threshold}",
+                        1)
                     risen_too_much = True
-                else :
+                else:
                     # print("Temp is in range, all is well")
                     risen_too_much = False
             else:
-                self.console("Error reading temperature: " + error)
+                self.console("Error reading temperature: " + error, 1)
                 risen_too_much = True
         else:
             # print("Not using temperature rise abort")
@@ -505,9 +523,8 @@ class SessionThreadWorker(QObject):
                           frame_set: FrameSet,
                           row_index: int,
                           cooling_info: CameraCoolingInfo,
-                          time_info: SessionTimeInfo) -> bool:
+                          time_info: SessionTimeInfo) -> (bool, bool):
         # print("acquire_frame_set")
-        success = False
         continue_acquisition = True
 
         # How many do we need (give credit for frames already completed)?
@@ -523,7 +540,7 @@ class SessionThreadWorker(QObject):
         else:
             exposure_part = ""
         last_part = f", binned {binning} x {binning}"
-        self.console(first_part+exposure_part+last_part, 1)
+        self.console(first_part + exposure_part + last_part, 1)
         # Set up camera for these identical frames
         (success, message) = server.set_camera_image(frame_set.camera_image_type_code(),
                                                      binning, exposure_seconds)
@@ -535,7 +552,7 @@ class SessionThreadWorker(QObject):
                 number_needed -= 1
                 # See if this frame would push beyond the desired end time
                 if self.frame_would_exceed_end_time(frame_set, time_info):
-                    self.console("Frame would extend past session end time.",2)
+                    self.console("Frame would extend past session end time.", 2)
                     success = True
                     continue_acquisition = False
                 else:
@@ -562,7 +579,6 @@ class SessionThreadWorker(QObject):
                                     frame_set: FrameSet,
                                     time_info: SessionTimeInfo) -> bool:
         # print(f"frame_would_exceed_end_time({frame_type},{binning},{exposure})")
-        would_exceed = False
         if time_info.get_end_when_done():
             # print("  Not using end time, can't exceed it")
             would_exceed = False
@@ -588,7 +604,6 @@ class SessionThreadWorker(QObject):
 
     def acquire_one_frame(self, server: TheSkyX, frame_set: FrameSet, row_index: int) -> bool:
         # print("acquire_one_frame")
-        success = False
         # We want to acquire asynchronously so we can be alert for session cancel
         # Calculate how long image is likely to take
         total_time = self.calc_total_exposure_time(frame_set)
@@ -626,7 +641,6 @@ class SessionThreadWorker(QObject):
     def wait_for_camera_completion(self, server) -> (bool, str):
         # print("wait_for_camera_completion")
         success = False
-        message = ""
         total_time_waiting = 0.0
         (complete_check_successful, is_complete, message) = server.get_exposure_is_complete()
         while self._controller.thread_running() \
@@ -649,7 +663,7 @@ class SessionThreadWorker(QObject):
             success = False
             message = "Timed out waiting for camera to finish"
         else:
-            assert(is_complete)
+            assert is_complete
             success = True
         return success, message
 
@@ -657,8 +671,7 @@ class SessionThreadWorker(QObject):
     # CCD to warm up for a given time before disconnecting.  Return success if nothing breaks.
 
     def warmup_if_requested(self, server: TheSkyX, cooling_info: CameraCoolingInfo) -> bool:
-        print("warmup_if_requested")
-        success = False
+        # print("warmup_if_requested")
         if cooling_info.is_regulated and cooling_info.warm_up_when_done:
             (cooling_off_success, message) = server.set_camera_cooling(False, 0)
             if cooling_off_success:
@@ -684,8 +697,8 @@ class SessionThreadWorker(QObject):
         success = False
         if disconnect_requested:
             (success, message) = server.disconnect_camera()
-        if success:
-            self.console("Camera Disconnected",1)
-        else:
-            self.console(f"Error disconnecting camera: {message}",1)
+            if success:
+                self.console("Camera Disconnected", 1)
+            else:
+                self.console(f"Error disconnecting camera: {message}", 1)
         return success

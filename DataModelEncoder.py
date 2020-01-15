@@ -1,3 +1,8 @@
+from json import JSONEncoder
+
+from FrameSet import FrameSet
+
+
 class DataModelEncoder(JSONEncoder):
 
     def default(self, obj):

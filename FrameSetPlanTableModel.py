@@ -1,3 +1,7 @@
+from PyQt5.QtCore import QAbstractTableModel, QModelIndex, QVariant, Qt
+
+from FrameSet import FrameSet
+
 
 class FrameSetPlanTableModel (QAbstractTableModel):
 
@@ -9,7 +13,7 @@ class FrameSetPlanTableModel (QAbstractTableModel):
         self._dataModel = the_data_model
 
     # Methods required by the parent data model
-    def rowCount(self, parent_model_index) -> int:
+    def rowCount(self, parent_model_index: QModelIndex) -> int:
         # print(f"rowCount({parent_model_index}")
         return len(self._dataModel.get_saved_frame_sets())
 
@@ -20,7 +24,7 @@ class FrameSetPlanTableModel (QAbstractTableModel):
         row_num: int = index.row()
         column_num: int = index.column()
         # print(f"data(({row_num},{column_num}),{role})")
-        if (role == Qt.DisplayRole):
+        if role == Qt.DisplayRole:
             assert((row_num >= 0) & (row_num < len(self._dataModel.get_saved_frame_sets())))
             the_frame_set: FrameSet = self._dataModel.get_frame_set(row_num)
             result: QVariant = QVariant(the_frame_set.fieldNumberAsString(column_num))
@@ -31,30 +35,28 @@ class FrameSetPlanTableModel (QAbstractTableModel):
     def headerData(self, column_number, orientation, role):
         # print(f"headerData({column_number}, {orientation}, {role})")
         result = QVariant()
-        if ((role == Qt.DisplayRole) & (orientation == Qt.Horizontal)):
+        if (role == Qt.DisplayRole) and (orientation == Qt.Horizontal):
             assert((column_number >= 0) & (column_number < len(self._columnHeaders)))
             result = self._columnHeaders[column_number]
         return result
 
     # Add a frameset to the end of the list in this model
-    def addFrameSet(self, new_frame_set : FrameSet):
-        frame_sets : [FrameSet] = self._dataModel.get_saved_frame_sets()
+    def addFrameSet(self, new_frame_set: FrameSet):
+        frame_sets: [FrameSet] = self._dataModel.get_saved_frame_sets()
         self.beginInsertRows(QModelIndex(), len(frame_sets), len(frame_sets))
         self._dataModel.add_frame_set(new_frame_set)
         self.endInsertRows()
 
     # Insert a frameset into the list at the given index position
-    def insertFrameSet(self, new_frame_set : FrameSet, at_index : int):
-        frame_sets : [FrameSet] = self._dataModel.get_saved_frame_sets()
+    def insertFrameSet(self, new_frame_set: FrameSet, at_index: int):
         self.beginInsertRows(QModelIndex(), at_index, at_index)
         self._dataModel.insert_frame_set(new_frame_set, at_index)
         self.endInsertRows()
 
     # Delete the frameSet at the given index
-    def deleteRow(self, index_to_delete : int):
-        num_frame_sets : int = len(self._dataModel.get_saved_frame_sets())
+    def deleteRow(self, index_to_delete: int):
+        num_frame_sets: int = len(self._dataModel.get_saved_frame_sets())
         assert ((index_to_delete >= 0) and (index_to_delete < num_frame_sets))
         self.beginRemoveRows(QModelIndex(), index_to_delete, index_to_delete)
         self._dataModel.delete_frame_set(index_to_delete)
         self.endRemoveRows()
-
