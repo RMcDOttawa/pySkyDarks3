@@ -1,8 +1,6 @@
 # Class with an instance shared by the main event controller and the session worker
 # Using mutex-lock, basic status such as "cancel the thread" can be set by the main controller
 # and safely read and responded to by the worker.
-# Another lock is available externally and is used to ensure only one thread at a time
-# sends TCP commands to the TheSkyX server
 from PyQt5.QtCore import QMutex
 
 

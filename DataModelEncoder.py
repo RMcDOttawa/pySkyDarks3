@@ -1,3 +1,4 @@
+import traceback
 from json import JSONEncoder
 
 from FrameSet import FrameSet
@@ -12,4 +13,5 @@ class DataModelEncoder(JSONEncoder):
             return obj.encode()
 
         print(f"DataModelEncoder: unexpected type: {obj}")
+        traceback.print_exc()
         return f"Unknown DataModel Object {obj}"
