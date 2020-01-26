@@ -1,6 +1,7 @@
 from PyQt5.QtCore import QAbstractTableModel, QModelIndex, QVariant, Qt
 
 from FrameSet import FrameSet
+from tracelog import *
 
 
 class FrameSetPlanTableModel (QAbstractTableModel):
@@ -13,13 +14,16 @@ class FrameSetPlanTableModel (QAbstractTableModel):
         self._dataModel = the_data_model
 
     # Methods required by the parent data model
+    #tracelog
     def rowCount(self, parent_model_index: QModelIndex) -> int:
         # print(f"rowCount({parent_model_index}")
         return len(self._dataModel.get_saved_frame_sets())
 
+    #tracelog
     def columnCount(self, parent_model_index) -> int:
         return FrameSet.NUMBER_OF_DISPLAY_FIELDS
 
+    #tracelog
     def data(self, index: QModelIndex, role: Qt.DisplayRole):
         row_num: int = index.row()
         column_num: int = index.column()
@@ -32,6 +36,7 @@ class FrameSetPlanTableModel (QAbstractTableModel):
             result = QVariant()
         return result
 
+    #tracelog
     def headerData(self, column_number, orientation, role):
         # print(f"headerData({column_number}, {orientation}, {role})")
         result = QVariant()
@@ -41,6 +46,7 @@ class FrameSetPlanTableModel (QAbstractTableModel):
         return result
 
     # Add a frameset to the end of the list in this model
+    @tracelog
     def addFrameSet(self, new_frame_set: FrameSet):
         frame_sets: [FrameSet] = self._dataModel.get_saved_frame_sets()
         self.beginInsertRows(QModelIndex(), len(frame_sets), len(frame_sets))
@@ -48,12 +54,14 @@ class FrameSetPlanTableModel (QAbstractTableModel):
         self.endInsertRows()
 
     # Insert a frameset into the list at the given index position
+    @tracelog
     def insertFrameSet(self, new_frame_set: FrameSet, at_index: int):
         self.beginInsertRows(QModelIndex(), at_index, at_index)
         self._dataModel.insert_frame_set(new_frame_set, at_index)
         self.endInsertRows()
 
     # Delete the frameSet at the given index
+    @tracelog
     def deleteRow(self, index_to_delete: int):
         num_frame_sets: int = len(self._dataModel.get_saved_frame_sets())
         assert ((index_to_delete >= 0) and (index_to_delete < num_frame_sets))

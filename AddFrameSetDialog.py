@@ -1,6 +1,9 @@
 from PyQt5 import uic
 from PyQt5.QtWidgets import QDialog
 
+from MultiOsUtil import MultiOsUtil
+from tracelog import *
+
 from BiasFrameSet import BiasFrameSet
 from DarkFrameSet import DarkFrameSet
 from FrameSet import FrameSet
@@ -9,19 +12,24 @@ from Validators import Validators
 
 class AddFrameSetDialog(QDialog):
     def __init__(self):
+        """Initialize class object on creation"""
         # print("AddFrameSetDialog/init entered")
         QDialog.__init__(self)
-        self.ui = uic.loadUi("AddFrameSet.ui")
+        self.ui = uic.loadUi(MultiOsUtil.path_for_file_in_program_directory("AddFrameSet.ui"))
         self._numFramesValid = False   # Set as part of field validation
         self._exposureValid = False
         self._completedValid = False
-        self._frameSet: FrameSet = FrameSet()
+        self._frameSet: FrameSet
         # print("AddFrameSetDialog/init exits")
 
+    @tracelog
     def getFrameSet(self) -> FrameSet:  # Will be DarkFrameSet or BiasFrameSet
+        """Return the frameset created by this dialog after it is closed"""
         return self._frameSet
 
+    @tracelog
     def setupUI(self, new_set: bool, frame_set=None):
+        """Initialize UI fields in the dialog"""
         print("AddFrameSetDialog setupUI entered")
 
         # Remember the frame set that was used to set up this window.
@@ -58,13 +66,13 @@ class AddFrameSetDialog(QDialog):
             self.ui.binning44.setChecked(True)
 
         # Catch changes to the input fields
-        self.ui.numberOfFrames.editingFinished.connect(self.numberOfFramesChanged)
-        self.ui.exposureSeconds.editingFinished.connect(self.exposureSecondsChanged)
-        self.ui.completedFrames.editingFinished.connect(self.completedFramesChanged)
+        self.ui.numberOfFrames.editingFinished.connect(self.number_of_frames_changed)
+        self.ui.exposureSeconds.editingFinished.connect(self.exposure_seconds_changed)
+        self.ui.completedFrames.editingFinished.connect(self.completed_frames_changed)
 
         # Button responders
-        self.ui.addButton.clicked.connect(self.addButtonClicked)
-        self.ui.cancelButton.clicked.connect(self.cancelButtonClicked)
+        self.ui.addButton.clicked.connect(self.add_button_clicked)
+        self.ui.cancelButton.clicked.connect(self.cancel_button_clicked)
 
         # If we're defining a new set, we don't allow the Completed field to be seen or set
         if new_set:
@@ -79,7 +87,9 @@ class AddFrameSetDialog(QDialog):
         print("AddFrameSetDialog setupUI exits")
 
     #  Enable the Add button depending on validity of input fields
+    @tracelog
     def enableControls(self):
+        """Enable/disable certain UI controls based on context"""
         self.ui.addButton.setEnabled(self._numFramesValid and self._exposureValid
                                      and (self._completedValid or not (self.ui.completedFrames.isVisible())))
 
@@ -87,7 +97,9 @@ class AddFrameSetDialog(QDialog):
     # Validate it and, if valid, update the FrameSet we're creating or editing
     # If not valid, record that fact so the Add button becomes disabled
 
-    def numberOfFramesChanged(self):
+    @tracelog
+    def number_of_frames_changed(self):
+        """Validate and store change number of frames field"""
         proposed_value = self.ui.numberOfFrames.text()
         # print("numberOfFramesChanged: " + proposed_value)
         if Validators.valid_int_in_range(proposed_value, 1, 32767) is not None:
@@ -102,7 +114,9 @@ class AddFrameSetDialog(QDialog):
     # Validate it and, if valid, update the FrameSet we're creating or editing
     # If not valid, record that fact so the Add button becomes disabled
 
-    def exposureSecondsChanged(self):
+    @tracelog
+    def exposure_seconds_changed(self):
+        """Validate and store changed exposure seconds field"""
         proposed_value = self.ui.exposureSeconds.text()
         # print("exposureSecondsChanged: " + proposed_value)
         if self.ui.biasButton.isChecked():
@@ -130,7 +144,9 @@ class AddFrameSetDialog(QDialog):
     # (This can happen only when editing, since we hide this field when creating a new FrameSet)
     # If not valid, record that fact so the Add button becomes disabled
 
-    def completedFramesChanged(self):
+    @tracelog
+    def completed_frames_changed(self):
+        """Validate and store changed 'completed frames' field"""
         proposed_value = self.ui.completedFrames.text()
         # print("completedFramesChanged, proposed \"" + proposed_value + "\"")
         if Validators.valid_int_in_range(proposed_value, 0, 32767) is not None:
@@ -144,14 +160,16 @@ class AddFrameSetDialog(QDialog):
     # User has clicked the "Add" button.  Return to our parent with the modified
     # frameset available for recovery
 
-    def addButtonClicked(self):
+    @tracelog
+    def add_button_clicked(self, _):
+        """Respond to Add button - store data and end dialog"""
         # print("addButtonClicked")
         # In case the user has typed something into a field but not caused it to be
         # processed by hitting tab or enter, do another round of data entry & validation
-        self.numberOfFramesChanged()
-        self.exposureSecondsChanged()
+        self.number_of_frames_changed()
+        self.exposure_seconds_changed()
         if self.ui.completedFrames.isVisible():
-            self.completedFramesChanged()
+            self.completed_frames_changed()
         # Now, if the data survived that validation, we can proceed to process the Add
         if self.ui.addButton.isEnabled():
             # Copy the edited fields back to the saved frameSet
@@ -175,7 +193,9 @@ class AddFrameSetDialog(QDialog):
 
             self.ui.accept()
 
-    def cancelButtonClicked(self):
+    @tracelog
+    def cancel_button_clicked(self, _):
+        """Respond to Cancel button by closing dialog with signal not to proceed"""
         # print("cancelButtonClicked")
         # Restore the incoming frameset from the saved values
         self.ui.reject()

@@ -5,6 +5,7 @@ class BiasFrameSet(FrameSet):
     # No additional attributes for Bias Frames
 
     def fieldNumberAsString(self, field_number: int) -> str:
+        """Translate column number of frame table to a string, for bias frames"""
         result = "invalid"
         if field_number == 0:
             result = str(self._numberOfFrames)
@@ -26,20 +27,24 @@ class BiasFrameSet(FrameSet):
                + f"({str(self._numberComplete)} complete)>"
 
     def encode(self):
+        """JSON encode this bias frame set"""
         return {
             "_type": "BiasFrameSet",
             "_value": self.__dict__
         }
 
     def type_name_text(self) -> str:
+        """Provide printable label for this kind of frame"""
         return "Bias"
 
     # The numeric type code for THeSkyX for this kind of image.  2=Bias, 3=Dark
     def camera_image_type_code(self) -> int:
+        """Return the magic code number that TheSkyX uses for bias frames"""
         return 2
 
     @classmethod
     def decode(cls, obj):
+        """JSON decode given dict into a BiasFrameSet"""
         # print(f"BiasFrameSet/decode({obj}")
         assert (obj["_type"] == "BiasFrameSet")
         value_dict = obj['_value']

@@ -4,6 +4,7 @@ from time import strptime, mktime
 
 from skyfield.api import load
 from skyfield.toposlib import Topos
+from tracelog import *
 
 from BiasFrameSet import BiasFrameSet
 from CameraCoolingInfo import CameraCoolingInfo
@@ -95,13 +96,17 @@ class DataModel:
     # Clear the cached ephemeris objects before encoding the data model
     # (they will automatically reload the next time they are needed).
 
+    @tracelog
     def clear_ephemeris(self):
+        """Set sunset calculation ephemeris fields to null to avoid writing them to save files"""
         self._skyFieldTimeScale = 0
         self._ephemeris = 0
         self._skyFieldTimeScaleNeedsLoad = True
         self._ephemerisNeedsLoad = True
 
+    @tracelog
     def restore_ephemeris(self, saved_data: ()):
+        """Restore saved sunset calculation ephemeris values"""
         assert (len(saved_data) == 4)
         self._skyFieldTimeScale = saved_data[0]
         self._ephemeris = saved_data[2]
@@ -392,7 +397,9 @@ class DataModel:
 
     # Determine if we have enough information to allow the acquisition session to run
     # We need:  server address and port number, and at least one unfinished FrameSet
+    @tracelog
     def session_ready_to_run(self) -> bool:
+        """Determine if we have all the data we need to run an acquisition session"""
         # print("sessionReadyToRun")
         address_known = len(self._netAddress.strip()) > 0
         port_known = len(self._portNumber.strip()) > 0
@@ -400,29 +407,39 @@ class DataModel:
         return address_known & port_known & some_framesets_needed
 
     # Get list of frameSets where # wanted > numberComplete
+    @tracelog
     def get_incomplete_framesets(self) -> [FrameSet]:
+        """Return a list of frame sets that still need to be acquired"""
         return list(filter(lambda fs: fs.get_number_of_frames() > fs.get_number_complete(), self._savedFrameSets))
 
+    @tracelog
     def any_nonzero_completed_counts(self) -> bool:
+        """Determine if there are any frame sets with nonzero completion counts"""
         # print("any_nonzero_completed_counts")
         for frame_set in self._savedFrameSets:
             if frame_set.get_number_complete() > 0:
                 return True
         return False
 
+    @tracelog
     def reset_completed_counts(self):
+        """Set completed counts to all framesets to zero so they will be re-acquired"""
         # print("reset_completed_counts")
         for frame_set in self._savedFrameSets:
             frame_set.set_number_complete(0)
 
     # Add a new frameset to the end of the list
+    @tracelog
     def add_frame_set(self, new_frame_set: FrameSet) -> None:
+        """Append a Frame Set to the end of the frame sets list"""
         # print(f"addFrameSet entered.  Number = {len(self._savedFrameSets)}")
         self._savedFrameSets.append(new_frame_set)
         # print(f"addFrameSet exits.  Number = {len(self._savedFrameSets)}")
 
     # Insert a new frameset at the given position in the list
+    @tracelog
     def insert_frame_set(self, new_frame_set: FrameSet, at_index: int) -> None:
+        """Insert frame set into the given position in the frame sets list"""
         # print(f"insertFrameSet({at_index}) entered.  Number = {len(self._savedFrameSets)}")
         self._savedFrameSets.insert(at_index, new_frame_set)
         # print(f"insertFrameSet({at_index}) exits.  Number = {len(self._savedFrameSets)}")
@@ -432,11 +449,13 @@ class DataModel:
     #   - a number of dark frames at each combination of given binnings and exposures
 
     @staticmethod
+    @tracelog
     def generate_frame_sets(num_bias_frames: int,
                             bias_binnings: [int],
                             num_dark_frames: int,
                             dark_binnings: [int],
                             dark_exposures: [float]) -> [FrameSet]:
+        """Generate a list of frame sets meeting the given specifications from Bulk Add"""
         result: [FrameSet] = []
 
         # Bias frames
@@ -457,14 +476,18 @@ class DataModel:
     # Indicate whether we have all the information we need to calculate sunrise & set times
     # (time zone, latitude, and longitude)
 
+    @tracelog
     def can_calculate_sunrise(self) -> bool:
+        """Determine if we have all the information needed to calculate sunrise times"""
         return self.get_time_zone() != DataModel.TIMEZONE_NULL \
                and self.get_latitude() != DataModel.LATITUDE_NULL \
                and self.get_longitude() != DataModel.LONGITUDE_NULL
 
     # Calculate the time of sunset, return a time with no zone offset
 
+    @tracelog
     def calc_sunset(self, start_date_type: str, given_start_date: date) -> time:
+        """Calculate sunset time for the specified date"""
         # print(f"calcSunset({start_date_type}, {given_start_date})")
         # Get the date to use - today or a given date
         assert isinstance(given_start_date, date)
@@ -490,7 +513,9 @@ class DataModel:
         return sunset_local_time
 
     # Calculate the time of sunrise
+    @tracelog
     def calc_sunrise(self, end_date_type: str, given_end_date: date) -> time:
+        """Calculate sunrise time for the specified date"""
         # print(f"calcSunrise({end_date_type}, {given_end_date})")
         assert isinstance(given_end_date, date)
         # Get the date to use - today or a given date
@@ -530,7 +555,9 @@ class DataModel:
         # sunset_local_time : time = sunset_local_datetime.time()
         # return sunset_local_time
 
+    @tracelog
     def calc_sunrise_and_sunset(self, start_date_type: str, given_start_date: date) -> [datetime, datetime]:
+        """Calculate sunrise and sunset times for the specified date"""
         assert (self.can_calculate_sunrise())
         assert (isinstance(given_start_date, date))
 
@@ -556,50 +583,66 @@ class DataModel:
         sunset_local = srs_array[1].utc_datetime() + timedelta(hours=self._timeZone)
         return sunrise_local, sunset_local
 
+    @tracelog
     def get_sky_field_time_scale(self):
+        """Load the skyfield module's time scale data if not already cached"""
         if self._skyFieldTimeScaleNeedsLoad:
             self._skyFieldTimeScale = api.load.timescale()
             self._skyFieldTimeScaleNeedsLoad = False
         return self._skyFieldTimeScale
 
+    @tracelog
     def get_ephemeris(self):
+        """Load the skyfield module's ephemeris data if not already cached"""
         if self._ephemerisNeedsLoad:
             self._ephemeris = load('de421.bsp')
             self._ephemerisNeedsLoad = False
         return self._ephemeris
 
     # Calculate the various sun-based times, based on current location
+    @tracelog
     def calc_civil_dusk(self, start_date_type: str, given_start_date: date) -> time:
+        """Calculate the time of Civil Dusk on the given date"""
         # print(f"calcCivilDusk({start_date_type}, {given_start_date})")
         assert isinstance(given_start_date, date)
         twilight_times = self.calc_start_twilight_times(start_date_type, given_start_date)
         return twilight_times[5].time()
 
+    @tracelog
     def calc_nautical_dusk(self, start_date_type: str, given_start_date: date) -> time:
+        """Calculate the time of Nautical Dusk on the given date"""
         # print(f"calcNauticalDusk({start_date_type}, {given_start_date})")
         assert isinstance(given_start_date, date)
         twilight_times = self.calc_start_twilight_times(start_date_type, given_start_date)
         return twilight_times[6].time()
 
+    @tracelog
     def calc_astronomical_dusk(self, start_date_type: str, given_start_date: date) -> time:
+        """Calculate the time of Astronomical Dusk on the given date"""
         # print(f"calcAstronomicalDusk({start_date_type}, {given_start_date})")
         assert isinstance(given_start_date, date)
         twilight_times = self.calc_start_twilight_times(start_date_type, given_start_date)
         return twilight_times[7].time()
 
+    @tracelog
     def calc_civil_dawn(self, end_date_type: str, given_end_date: date) -> time:
+        """Calculate the time of Civil Dawn on the given date"""
         # print(f"calcCivilDawn({end_date_type}, {given_end_date})")
         assert isinstance(given_end_date, date)
         twilight_times = self.calc_end_twilight_times(end_date_type, given_end_date)
         return twilight_times[2].time()
 
+    @tracelog
     def calc_nautical_dawn(self, end_date_type: str, given_end_date: date) -> time:
+        """Calculate the time of Nautical Dawn on the given date"""
         # print(f"calcNauticalDawn({start_date_type}, {given_start_date})")
         assert isinstance(given_end_date, date)
         twilight_times = self.calc_end_twilight_times(end_date_type, given_end_date)
         return twilight_times[1].time()
 
+    @tracelog
     def calc_astronomical_dawn(self, end_date_type: str, given_end_date: date) -> time:
+        """Calculate the time of Astronomical Dawn on the given date"""
         # print(f"calcAstronomicalDawn({start_date_type}, {given_start_date})")
         assert isinstance(given_end_date, date)
         twilight_times = self.calc_end_twilight_times(end_date_type, given_end_date)
@@ -616,7 +659,9 @@ class DataModel:
     #   5           Civil Dusk
     #   6           Nautical Dusk
     #   7           Astronomical Dusk
+    @tracelog
     def calc_start_twilight_times(self, start_date_type: str, given_start_date: date) -> []:
+        """Get the start-of-twilight calculations from the skyfield module"""
         assert (self.can_calculate_sunrise())
         assert (isinstance(given_start_date, date))
         # print(f"calc_start_twilight_times({start_date_type}, {given_start_date})")
@@ -640,7 +685,9 @@ class DataModel:
         local_times = list(map(lambda x: x.utc_datetime() + timedelta(hours=self._timeZone), srs_array))
         return local_times
 
+    @tracelog
     def calc_end_twilight_times(self, end_date_type: str, given_end_date: date) -> []:
+        """Get the end-of-twilight calculations from the skyfield module"""
         assert (self.can_calculate_sunrise())
         assert (isinstance(given_end_date, date))
         # print(f"calc_end_twilight_times({end_date_type}, {given_end_date})")
@@ -666,19 +713,25 @@ class DataModel:
 
     # Get SkyField topo location for latitude and longitude
     @staticmethod
+    @tracelog
     def get_location_topos(latitude: float, longitude: float) -> Topos:
+        """Calculat the skyfield module's topo location information for the site"""
         assert ((latitude != DataModel.LATITUDE_NULL) and (longitude != DataModel.LONGITUDE_NULL))
         return api.Topos(latitude, longitude)
 
     # Produce a JSON serialization of this data model for writing to a file
+    @tracelog
     def serialize_to_json(self) -> str:
+        """Convert the data modle to a json-encoded string"""
         # print("serializeToJson")
         self.clear_ephemeris()
         serialized = json.dumps(self.__dict__, cls=DataModelEncoder, indent=4)
         return serialized
 
     # Update all the local fields in this model from the given loaded JSON dictionary
+    @tracelog
     def update_from_loaded_json(self, new_values: {}):
+        """Set data modl field from given json-encoded dict"""
         # print(f"DataModel/updateFromLoadedJson: {new_values}")
         # Do the update manually so we can test for missing and extra key/value pairs
         for k, v in self.__dict__.items():
@@ -699,6 +752,7 @@ class DataModel:
             print(f"Key {k} in saved file is not part of data model, ignored.")
 
     # Copy all the attribute values from the given model into self
+    @tracelog
     def load_from_model(self, source_model):
         # print("loadFromModel")
         self.__dict__.update(source_model.__dict__)
@@ -714,7 +768,9 @@ class DataModel:
     #      Otherwise, use specified date and time.
     #      If date & time is  earlier than the start date & time, advance one day
 
+    @tracelog
     def get_session_time_info(self) -> SessionTimeInfo:
+        """Create complete description of session start/end parameters"""
         # First, start time
         today: date = date.today()
         right_now: time = datetime.now().time()
@@ -768,15 +824,17 @@ class DataModel:
 
         return SessionTimeInfo(start_now, start_date_time, stop_when_done, end_date_time)
 
-    # Convert date string in yyyy-mm-dd format to python date
     @classmethod
+    @tracelog
     def parse_date(cls, string: str) -> date:
+        """Convert date string in yyyy-mm-dd format to python date"""
         parts = string.split('-')
         return date(int(parts[0]), int(parts[1]), int(parts[2]))
 
-    # Get the appropriate start time given the various time and sunset settings.
     # Returns a time object without timezone offset
+    @tracelog
     def appropriate_start_time(self) -> time:
+        """Get the appropriate start time given the various time and sunset settings."""
         # print("appropriate_start_time entered")
         result: time = None
         start_date: date = date.today()
@@ -810,9 +868,10 @@ class DataModel:
         # print(f"get_appropriate_start_time exits: {result}")
         return result
 
-    # Get the appropriate end time given the various time and sunset settings.
     # Returns a time object without timezone offset
+    @tracelog
     def appropriate_end_time(self):
+        """Get the appropriate end time given the various time and sunset settings."""
         # print("appropriate_end_time entered")
         result: time = None
         end_date = date.today()
@@ -844,7 +903,9 @@ class DataModel:
         # print(f"appropriate_end_time exits: {result}")
         return result
 
+    @tracelog
     def get_session_temperature_info(self) -> CameraCoolingInfo:
+        """Get complete description of temperature data for the session"""
         return CameraCoolingInfo(self._temperatureRegulated, self._temperatureTarget,
                                  self._temperatureWithin, self._temperatureSettleSeconds,
                                  self._maxCoolingWaitTime, self._temperatureFailRetryCount,

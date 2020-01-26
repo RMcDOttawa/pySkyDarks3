@@ -3,6 +3,8 @@ from datetime import date, time
 from time import strftime
 from typing import List
 
+from MultiOsUtil import MultiOsUtil
+from tracelog import *
 from PyQt5 import uic, QtWidgets
 from PyQt5.QtCore import QMutex, QItemSelection, QModelIndex, QItemSelectionModel, QTime, QThread, QTimer, \
     QSettings, QDate
@@ -34,8 +36,9 @@ class MainWindow(QMainWindow):
     COOLER_POWER_UPDATE_INTERVAL = 20  # Update displayed cooler power this often
 
     def __init__(self):
+        """Initialize MainWindow class"""
         QMainWindow.__init__(self)
-        self.ui = uic.loadUi("MainWindow.ui")
+        self.ui = uic.loadUi(MultiOsUtil.path_for_file_in_program_directory("MainWindow.ui"))
         self._controls_connected = False
         self._file_path = ""
         self._is_dirty = False
@@ -54,13 +57,16 @@ class MainWindow(QMainWindow):
         self._plan_table_model = None
 
     def set_is_dirty(self, dirty: bool):
+        """Record whether the open document has unsaved changes"""
         self._is_dirty = dirty
 
     def is_dirty(self) -> bool:
+        """Report whether the open document has unsaved changes"""
         return self._is_dirty
 
-    # Take a the data model, remember it, and use it to initialize fields
+    @tracelog
     def accept_data_model(self, the_model: DataModel):
+        """Take a data model, remember it, and use it to initialize fields"""
         self.model: DataModel = the_model
 
         # Location information
@@ -144,7 +150,9 @@ class MainWindow(QMainWindow):
         self.calculate_sun_based_times()
         self.enable_controls()
 
+    @tracelog
     def connect_controls(self):
+        """Connect responder methods to all the controls in the window"""
         # Catching changes to the table selection must be set up each time
         # (Determined this experimentally - not intuitive, but what the hell)
         table_selection_model = self.ui.framesPlanTable.selectionModel()
@@ -296,7 +304,9 @@ class MainWindow(QMainWindow):
             assert (app is not None)
             app.aboutToQuit.connect(self.app_about_to_quit)
 
+    @tracelog
     def enable_controls(self):
+        """Set enabled-disabled status of some controls depending on data settings"""
         # print("enableControls")
 
         # Enable sunrise-based times only when latitude & longitude are known
@@ -389,7 +399,9 @@ class MainWindow(QMainWindow):
         # Run Session tab if session is ready (server and at least one frame)
         self.ui.mainTabView.setTabEnabled(self.RUN_SESSION_TAB_INDEX, self.model.session_ready_to_run())
 
-    def test_connection_button_clicked(self):
+    @tracelog
+    def test_connection_button_clicked(self, _):
+        """Try to connect to the server and report if successful"""
         # print("testConnectionButtonClicked")
         # Lock-in any changes to network fields (in case user is focused on one
         # and hasn't hit enter before clicking the test connection button)
@@ -402,7 +414,9 @@ class MainWindow(QMainWindow):
             else:
                 self.ui.testConnectionMessage.setText(message)
 
-    def send_wol_now_button_clicked(self):
+    @tracelog
+    def send_wol_now_button_clicked(self, _):
+        """Broadcast wake-on-lan packet over network"""
         # print("sendWolNowButtonClicked")
         # Lock-in any changes to WOL fields (in case user is focused on one
         # and hasn't hit enter before clicking the test connection button)
@@ -417,19 +431,25 @@ class MainWindow(QMainWindow):
             else:
                 self.ui.testWOLMessage.setText(message)
 
-    def frames_plan_table_selection_changed(self):
+    @tracelog
+    def frames_plan_table_selection_changed(self, _1, _2):
+        """Respond to user selecting a row in the frames plan table"""
         # print("framesPlanTableSelectionChanged")
         self.enable_controls()
 
     # Input field catchers
 
+    @tracelog
     def loc_name_edit_finished(self):
+        """Handle user editing the location name"""
         # print("locNameEditFinished")
         self.model.set_location_name(self.ui.locName.text())
         self.set_is_dirty(True)
         self.enable_controls()
 
+    @tracelog
     def time_zone_edit_finished(self):
+        """Handle user editing the time zone: validate and store it"""
         # print("timeZoneEditFinished")
         proposed_value: str = self.ui.timeZone.text()
         converted_value: float = Validators.valid_int_in_range(proposed_value, -24, +24)
@@ -441,7 +461,9 @@ class MainWindow(QMainWindow):
             self.ui.timeZone.setText("INVALID")
         self.enable_controls()
 
+    @tracelog
     def latitude_edit_finished(self):
+        """Validate and store entered Latitude value"""
         # print("latitudeEditFinished")
         proposed_value: str = self.ui.latitude.text()
         converted_value: float = Validators.valid_float_in_range(proposed_value, -90.0, +90.0)
@@ -453,7 +475,9 @@ class MainWindow(QMainWindow):
             self.ui.latitude.setText("INVALID")
         self.enable_controls()
 
+    @tracelog
     def longitude_edit_finished(self):
+        """Validate and store entered Longitude value"""
         # print("longitudeEditFinished")
         proposed_value: str = self.ui.longitude.text()
         converted_value: float = Validators.valid_float_in_range(proposed_value, -180.0, +180.0)
@@ -465,116 +489,150 @@ class MainWindow(QMainWindow):
             self.ui.longitude.setText("INVALID")
         self.enable_controls()
 
-    def start_date_now_clicked(self):
+    @tracelog
+    def start_date_now_clicked(self, _):
+        """Record user request that session should start NOW"""
         # print("startDateNowClicked")
         self.model.set_start_date_type(StartDate.NOW)
         self.set_is_dirty(True)
         self.enable_controls()
 
-    def start_date_today_clicked(self):
+    @tracelog
+    def start_date_today_clicked(self, _):
+        """Record user request that session should start today at a given time"""
         # print("startDateTodayClicked")
         self.model.set_start_date_type(StartDate.TODAY)
         self.set_is_dirty(True)
         self.enable_controls()
 
-    def start_date_given_clicked(self):
+    @tracelog
+    def start_date_given_clicked(self, _):
+        """Record user request that session should start on a given date at a given time"""
         # print("startDateGivenClicked")
         self.model.set_start_date_type(StartDate.GIVEN_DATE)
         self.set_is_dirty(True)
         self.enable_controls()
 
-    def start_time_sunset_clicked(self):
+    @tracelog
+    def start_time_sunset_clicked(self, _):
+        """Record user request that session should start at sunset"""
         # print("startTimeSunsetClicked")
         self.model.set_start_time_type(StartTime.SUNSET)
         self.calculate_sun_based_times()
         self.set_is_dirty(True)
         self.enable_controls()
 
-    def start_time_civil_clicked(self):
+    @tracelog
+    def start_time_civil_clicked(self, _):
+        """Record user request that session should start at civil dusk"""
         # print("startTimeCivilClicked")
         self.model.set_start_time_type(StartTime.CIVIL_DUSK)
         self.calculate_sun_based_times()
         self.set_is_dirty(True)
         self.enable_controls()
 
-    def start_time_nautical_clicked(self):
+    @tracelog
+    def start_time_nautical_clicked(self, _):
+        """Record user request that session should start at nautical dusk"""
         # print("startTimeNauticalClicked")
         self.model.set_start_time_type(StartTime.NAUTICAL_DUSK)
         self.calculate_sun_based_times()
         self.set_is_dirty(True)
         self.enable_controls()
 
-    def start_time_astronomical_clicked(self):
+    @tracelog
+    def start_time_astronomical_clicked(self, _):
+        """Record user request that session should start at astronomical dusk"""
         # print("startTimeAstronomicalClicked")
         self.model.set_start_time_type(StartTime.ASTRONOMICAL_DUSK)
         self.calculate_sun_based_times()
         self.set_is_dirty(True)
         self.enable_controls()
 
-    def start_time_given_clicked(self):
+    @tracelog
+    def start_time_given_clicked(self, _):
+        """Record user request that session should start at a specified time"""
         # print("startTimeGivenClicked")
         self.model.set_start_time_type(StartTime.GIVEN_TIME)
         self.calculate_sun_based_times()
         self.set_is_dirty(True)
         self.enable_controls()
 
-    def end_date_when_done_clicked(self):
+    @tracelog
+    def end_date_when_done_clicked(self, _):
+        """Record user request that session should keep going until all frames done"""
         # print("endDateWhenDoneClicked")
         self.model.set_end_date_type(EndDate.WHEN_DONE)
         self.calculate_sun_based_times()
         self.set_is_dirty(True)
         self.enable_controls()
 
-    def end_date_today_tomorrow_clicked(self):
+    @tracelog
+    def end_date_today_tomorrow_clicked(self, _):
+        """Record user request that session should end today or tomorrow at given time"""
         # print("endDateTodayTomorrowClicked")
         self.model.set_end_date_type(EndDate.TODAY_TOMORROW)
         self.calculate_sun_based_times()
         self.set_is_dirty(True)
         self.enable_controls()
 
-    def end_date_given_clicked(self):
+    @tracelog
+    def end_date_given_clicked(self, _):
+        """Record user request that session should end on given date"""
         # print("endDateGivenClicked")
         self.model.set_end_date_type(EndDate.GIVEN_DATE)
         self.calculate_sun_based_times()
         self.set_is_dirty(True)
         self.enable_controls()
 
-    def end_time_sunrise_clicked(self):
+    @tracelog
+    def end_time_sunrise_clicked(self, _):
+        """Record user request that session should end at sunrise"""
         # print("endTimeSunriseClicked")
         self.model.set_end_time_type(EndTime.SUNRISE)
         self.calculate_sun_based_times()
         self.set_is_dirty(True)
         self.enable_controls()
 
-    def end_time_civil_clicked(self):
+    @tracelog
+    def end_time_civil_clicked(self, _):
+        """Record user request that session should end at civil dawn"""
         # print("endTimeCivilClicked")
         self.model.set_end_time_type(EndTime.CIVIL_DAWN)
         self.calculate_sun_based_times()
         self.set_is_dirty(True)
         self.enable_controls()
 
-    def end_time_nautical_clicked(self):
+    @tracelog
+    def end_time_nautical_clicked(self, _):
+        """Record user request that session should end at nautical dawn"""
         # print("endTimeNauticalClicked")
         self.model.set_end_time_type(EndTime.NAUTICAL_DAWN)
         self.calculate_sun_based_times()
         self.set_is_dirty(True)
         self.enable_controls()
 
-    def end_time_astronomical_clicked(self):
+    @tracelog
+    def end_time_astronomical_clicked(self, _):
+        """Record user request that session should end at astronomical dawn"""
         # print("endTimeAstronomicalClicked")
         self.model.set_end_time_type(EndTime.ASTRONOMICAL_DAWN)
         self.calculate_sun_based_times()
         self.set_is_dirty(True)
         self.enable_controls()
 
-    def end_time_given_clicked(self):
+    @tracelog
+    def end_time_given_clicked(self, _):
+        """Record user request that session should end at the given time"""
         # print("endTimeGivenClicked")
         self.model.set_end_time_type(EndTime.GIVEN_TIME)
         self.calculate_sun_based_times()
         self.set_is_dirty(True)
         self.enable_controls()
 
-    def start_date_edit_changed(self):
+    @tracelog
+    def start_date_edit_changed(self, _):
+        """User has edited the start date picker, store date"""
         # print("startDateEditChanged")
         new_start_date = self.ui.startDateEdit.date()
         date_as_string = new_start_date.toString("yyyy-MM-dd")
@@ -583,7 +641,9 @@ class MainWindow(QMainWindow):
         self.set_is_dirty(True)
         self.enable_controls()
 
-    def start_time_edit_changed(self):
+    @tracelog
+    def start_time_edit_changed(self, _):
+        """User has edited the start time picker, store time"""
         # print("startTimeEditChanged")
         new_start_time = self.ui.startTimeEdit.time()
         time_as_string = new_start_time.toString("HH:mm")
@@ -591,7 +651,9 @@ class MainWindow(QMainWindow):
         self.set_is_dirty(True)
         self.enable_controls()
 
-    def end_date_edit_changed(self):
+    @tracelog
+    def end_date_edit_changed(self, _):
+        """User has edited the end date picker, store date"""
         # print("endDateEditChanged")
         new_end_date = self.ui.endDateEdit.date()
         date_as_string = new_end_date.toString("yyyy-MM-dd")
@@ -600,7 +662,9 @@ class MainWindow(QMainWindow):
         self.set_is_dirty(True)
         self.enable_controls()
 
-    def end_time_edit_changed(self):
+    @tracelog
+    def end_time_edit_changed(self, _):
+        """User has edited the end time picker, store time"""
         # print("endTimeEditChanged")
         new_end_time = self.ui.endTimeEdit.time()
         time_as_string = new_end_time.toString("HH:mm")
@@ -608,19 +672,25 @@ class MainWindow(QMainWindow):
         self.set_is_dirty(True)
         self.enable_controls()
 
-    def disconnect_when_done_clicked(self):
+    @tracelog
+    def disconnect_when_done_clicked(self, _):
+        """User has toggled the 'disconnect when done' box - record setting"""
         # print("disconnectWhenDoneClicked")
         self.model.set_warm_up_when_done(self.ui.disconnectWhenDone.isChecked())
         self.set_is_dirty(True)
         self.enable_controls()
 
-    def auto_save_after_each_clicked(self):
+    @tracelog
+    def auto_save_after_each_clicked(self, _):
+        """User has toggled the 'autosave after each frame' box - record setting"""
         # print("autoSaveAfterEachClicked")
         self.model.set_auto_save_after_each_frame(self.ui.autoSaveAfterEach.isChecked())
         self.set_is_dirty(True)
         self.enable_controls()
 
+    @tracelog
     def warm_ccd_seconds_finished(self):
+        """Validate and store a new value in the 'warm up CCD seconds' field"""
         # print("warmCCDSecondsFinished")
         proposed_value: str = self.ui.warmCCDSeconds.text()
         converted_value: int = Validators.valid_int_in_range(proposed_value, 0, 24 * 60 * 60)
@@ -631,31 +701,41 @@ class MainWindow(QMainWindow):
             self.ui.warmCCDSeconds.setText("INVALID")
         self.enable_controls()
 
-    def warm_ccd_when_done_clicked(self):
+    @tracelog
+    def warm_ccd_when_done_clicked(self, _):
+        """User has toggled the 'warm ccd when done' box - record setting"""
         # print("warmCCDWhenDoneClicked")
         self.model.set_warm_up_when_done(self.ui.warmCCDWhenDone.isChecked())
         self.set_is_dirty(True)
         self.enable_controls()
 
-    def ccd_is_regulated_clicked(self):
+    @tracelog
+    def ccd_is_regulated_clicked(self, _):
+        """User has toggled the 'use temperature regulation' box - record setting"""
         # print("ccdIsRegulatedClicked")
         self.model.set_temperature_regulated(self.ui.ccdIsRegulated.isChecked())
         self.set_is_dirty(True)
         self.enable_controls()
 
-    def abort_if_temp_rises_clicked(self):
+    @tracelog
+    def abort_if_temp_rises_clicked(self, _):
+        """User has toggled the 'abort if temperature rises' box - record setting"""
         # print("abortIfTempRisesClicked")
         self.model.set_temperature_abort_on_rise(self.ui.abortIfTempRises.isChecked())
         self.set_is_dirty(True)
         self.enable_controls()
 
-    def send_wol_before_starting_clicked(self):
+    @tracelog
+    def send_wol_before_starting_clicked(self, _):
+        """User has toggled the 'send wake on lan before starting' box - record setting"""
         # print("sendWOLBeforeStartingClicked")
         self.model.set_send_wake_on_lan_before_starting(self.ui.sendWOLBeforeStarting.isChecked())
         self.set_is_dirty(True)
         self.enable_controls()
 
+    @tracelog
     def target_temperature_finished(self):
+        """Validate and record new value entered in target temperature field"""
         # print("targetTemperatureFinished")
         proposed_value: str = self.ui.targetTemperature.text()
         converted_value: float = Validators.valid_float_in_range(proposed_value, -273.0, +100.0)
@@ -666,7 +746,9 @@ class MainWindow(QMainWindow):
             self.ui.targetTemperature.setText("INVALID")
         self.enable_controls()
 
+    @tracelog
     def temperature_tolerance_finished(self):
+        """Validate and record new value entered in target temperature tolerance field"""
         # print("temperatureToleranceFinished")
         proposed_value: str = self.ui.temperatureTolerance.text()
         converted_value: float = Validators.valid_float_in_range(proposed_value, -50.0, +50.0)
@@ -677,7 +759,9 @@ class MainWindow(QMainWindow):
             self.ui.temperatureTolerance.setText("INVALID")
         self.enable_controls()
 
+    @tracelog
     def cooling_check_interval_finished(self):
+        """Validate and record new value entered in cooling check interval field"""
         # print("coolingCheckIntervalFinished")
         proposed_value: str = self.ui.coolingCheckInterval.text()
         converted_value: float = Validators.valid_float_in_range(proposed_value, 0.0, 10 * 60)
@@ -688,7 +772,9 @@ class MainWindow(QMainWindow):
             self.ui.coolingCheckInterval.setText("INVALID")
         self.enable_controls()
 
+    @tracelog
     def cooling_max_try_time_finished(self):
+        """Validate and record new value entered in max cooling time field"""
         # print("coolingMaxTryTimeFinished")
         proposed_value: str = self.ui.coolingMaxTryTime.text()
         converted_value: float = Validators.valid_float_in_range(proposed_value, 0.0, 12 * 60 * 60)
@@ -699,7 +785,9 @@ class MainWindow(QMainWindow):
             self.ui.coolingMaxTryTime.setText("INVALID")
         self.enable_controls()
 
+    @tracelog
     def cooling_max_retry_count_finished(self):
+        """Validate and record new value entered in cooling retry count field"""
         # print("coolingMaxRetryCountFinished")
         proposed_value: str = self.ui.coolingMaxRetryCount.text()
         converted_value: int = Validators.valid_int_in_range(proposed_value, 0, 100)
@@ -710,7 +798,9 @@ class MainWindow(QMainWindow):
             self.ui.coolingMaxRetryCount.setText("INVALID")
         self.enable_controls()
 
+    @tracelog
     def cooling_retry_delay_finished(self):
+        """Validate and record new value entered in 'delay between cooling retries' field"""
         # print("coolingRetryDelayFinished")
         proposed_value: str = self.ui.coolingRetryDelay.text()
         converted_value: float = Validators.valid_float_in_range(proposed_value, 0, 12 * 60 * 60)
@@ -721,7 +811,9 @@ class MainWindow(QMainWindow):
             self.ui.coolingRetryDelay.setText("INVALID")
         self.enable_controls()
 
+    @tracelog
     def temp_rise_abort_threshold_finished(self):
+        """Validate and record new value entered in temperature abort threshold field"""
         # print("tempRiseAbortThresholdFinished")
         proposed_value: str = self.ui.tempRiseAbortThreshold.text()
         converted_value: float = Validators.valid_float_in_range(proposed_value, 0.001, 100)
@@ -732,7 +824,9 @@ class MainWindow(QMainWindow):
             self.ui.tempRiseAbortThreshold.setText("INVALID")
         self.enable_controls()
 
+    @tracelog
     def server_address_finished(self):
+        """Validate and record new value entered in server address field"""
         # print("serverAddressFinished")
         proposed_value: str = self.ui.serverAddress.text()
         if RmNetUtils.valid_server_address(proposed_value):
@@ -742,7 +836,9 @@ class MainWindow(QMainWindow):
             self.ui.serverAddress.setText("INVALID")
         self.enable_controls()
 
+    @tracelog
     def wol_mac_address_finished(self):
+        """Validate and record new value entered in MAC address field"""
         # print("wolMacAddressFinished")
         proposed_value: str = self.ui.wolMacAddress.text()
         if RmNetUtils.valid_mac_address(proposed_value):
@@ -752,7 +848,9 @@ class MainWindow(QMainWindow):
             self.ui.wolMacAddress.setText("INVALID")
         self.enable_controls()
 
+    @tracelog
     def server_port_finished(self):
+        """Validate and record new value entered in server port number field"""
         # print("serverPortFinished")
         proposed_value: str = self.ui.serverPort.text()
         converted_value: int = Validators.valid_int_in_range(proposed_value, 0, 65535)
@@ -763,7 +861,9 @@ class MainWindow(QMainWindow):
             self.ui.serverPort.setText("INVALID")
         self.enable_controls()
 
+    @tracelog
     def send_wol_seconds_before_finished(self):
+        """Validate and record new value entered in WOL lead time field"""
         # print("sendWOLSecondsBeforeFinished")
         proposed_value: str = self.ui.sendWOLSecondsBefore.text()
         converted_value: float = Validators.valid_float_in_range(proposed_value, 0., 24 * 60 * 60)
@@ -774,7 +874,9 @@ class MainWindow(QMainWindow):
             self.ui.sendWOLSecondsBefore.setText("INVALID")
         self.enable_controls()
 
+    @tracelog
     def wol_broadcast_address_finished(self):
+        """Validate and record new value entered in WOL broadcast IP address field"""
         # print("wolBroadcastAddressFinished")
         proposed_value: str = self.ui.wolBroadcastAddress.text()
         if RmNetUtils.valid_ip_address(proposed_value):
@@ -789,7 +891,9 @@ class MainWindow(QMainWindow):
     # The "add frameset" button has been clicked.  Open a dialog form where
     # the user can specify the details of the frameset.  Modal wait for the
     # form to be submitted, and deal with the results if not cancelled.
-    def add_frame_button_clicked(self):
+    @tracelog
+    def add_frame_button_clicked(self, _):
+        """Respond to 'add frame' button by opening new frame dialog"""
         # print("addFrameButtonClicked entered")
         dialog: AddFrameSetDialog = AddFrameSetDialog()
         dialog.setupUI(new_set=True)
@@ -814,7 +918,9 @@ class MainWindow(QMainWindow):
 
     # One row is selected and the user has clicked "Edit"
     # We use the same dialog as adding a new frame, but pre-populate it with the selected frame
-    def edit_frame_button_clicked(self):
+    @tracelog
+    def edit_frame_button_clicked(self, _):
+        """Respond to 'edit frame' button by opening edit frame dialog"""
         # print("editFrameButtonClicked Entered")
 
         # Get the frameset that we'll edit
@@ -840,16 +946,20 @@ class MainWindow(QMainWindow):
 
     # A line in the table has been double-clicked. Try to treat like the Edit button
     # "Try" because we Edit only if exactly one row is selected
-    def frame_table_double_clicked(self):
+    @tracelog
+    def frame_table_double_clicked(self, _):
+        """treat double-click in the frame table the same as clicking Edit"""
         # print("frameTableDoubleClicked")
         rows_selected: [int] = self.frame_plan_selected_rows()
         if len(rows_selected) == 1:
-            self.edit_frame_button_clicked()
+            self.edit_frame_button_clicked(None)
 
     # One or more rows are selected, and we want to delete them.
     # We'll sort the row indexes and delete from max to min so the indexes don't
     # change once we start deleting.
-    def delete_frame_button_clicked(self):
+    @tracelog
+    def delete_frame_button_clicked(self, _):
+        """delete the selected row in the frame plan table"""
         # print("deleteFrameButtonClicked entered")
         rows_selected: [int] = self.frame_plan_selected_rows()
         rows_selected.sort(reverse=True)
@@ -863,7 +973,9 @@ class MainWindow(QMainWindow):
     # enter their initial plan.  We open a dialog where they can specify exposure times and
     # binning values, and we'll generate every combination of those.
 
-    def bulk_add_button_clicked(self):
+    @tracelog
+    def bulk_add_button_clicked(self, _):
+        """Respond to 'bulk add' button by opening dialog to specify multiple frames"""
         rows_selected = self.frame_plan_selected_rows()
         dialog: BulkEntryDialog = BulkEntryDialog()
         result: QDialog.DialogCode = dialog.ui.exec_()
@@ -889,7 +1001,9 @@ class MainWindow(QMainWindow):
 
     # "Reset Completed" has been clicked.
     #  Do a "are you sure" dialog, then set all the completed counts in the plan to zero
+    @tracelog
     def reset_completed_counts(self):
+        """Set all the completed counts in the frame plan bck to zero after a confirmation dialog"""
         # print("reset_completed_counts")
         confirmation_dialog: QMessageBox = QMessageBox()
         confirmation_dialog.setWindowTitle("Confirm Reset")
@@ -910,7 +1024,9 @@ class MainWindow(QMainWindow):
 
     # One or more lines are selected, not including the first one.  Move them
     # all up one space.
-    def frame_up_button_clicked(self):
+    @tracelog
+    def frame_up_button_clicked(self, _):
+        """Move selected row(s) in the frame plan table up one position"""
         # print("frameUpButtonClicked")
         rows_selected: [int] = self.frame_plan_selected_rows()
         rows_selected.sort()
@@ -931,7 +1047,9 @@ class MainWindow(QMainWindow):
 
     # One or more lines are selected, not including the bottom one.  Move them
     # all down one space.
-    def frame_down_button_clicked(self):
+    @tracelog
+    def frame_down_button_clicked(self, _):
+        """Move selected row(s) in the frame plan table down one position"""
         # print("frameDownButtonClicked")
         rows_selected: [int] = self.frame_plan_selected_rows()
         # Handle the rows from bottom of screen upward
@@ -966,7 +1084,9 @@ class MainWindow(QMainWindow):
         self.frame_plan_select_rows(new_selection)
         self.enable_controls()
 
-    def begin_session_button_clicked(self):
+    @tracelog
+    def begin_session_button_clicked(self, _):
+        """Begin the dark frame acquisition process"""
         # print("beginSessionButtonClicked")
         self.restrict_session_buttons()
         self.run_session_thread()
@@ -974,7 +1094,9 @@ class MainWindow(QMainWindow):
 
     # Fill in the table of framesets we'll work on in this session, with the subset of plan
     # framesets that are not complete
+    @tracelog
     def populate_session_framesets_table(self):
+        """Fill in the table that will show progress of the acquisition process"""
         # print("populateSessionFramesetsTable")
         # Have table columns resize to fit data
         horizontal_header: QHeaderView = self.ui.sessionTable.horizontalHeader()
@@ -987,7 +1109,9 @@ class MainWindow(QMainWindow):
 
     # Disable all the controls except the Cancel button so the session runs without complicated changes
 
+    @tracelog
     def restrict_session_buttons(self):
+        """Disable buttons and tabs that shouldn't be used during frame acquisition"""
         # print("restrictSessionButtons")
 
         # Disable Begin button on this page and Enable the Cancel button
@@ -1000,7 +1124,9 @@ class MainWindow(QMainWindow):
                 self.ui.mainTabView.setTabEnabled(tab_index, False)
 
     # Run the acquisition session as a separate thread so our UI remains responsive
+    @tracelog
     def run_session_thread(self):
+        """Spawn the sub-thread that does the data acquisition"""
         # print("runSessionThread")
         proceed = True
         if self.model.get_auto_save_after_each_frame():
@@ -1055,7 +1181,9 @@ class MainWindow(QMainWindow):
             # the thread ran and completed properly
             self.thread_finished()
 
+    @tracelog
     def thread_finished(self):
+        """Receive signal that acquisition thread is finished, and clean up"""
         # print("threadFinished")
         self.ui.progressBar.setValue(0)
         self.cooler_stopped()
@@ -1066,7 +1194,9 @@ class MainWindow(QMainWindow):
 
     # WOrker thread has told us the camera cooler has started.
     # This allows us to set up a timer to display the cooler power
+    @tracelog
     def cooler_started(self):
+        """Receive signal that camera cooling has started. Set timer to update power display"""
         # print("cooler_started")
         # Get our own instance of the server for talking to TheSkyX
         self._cooling_server = TheSkyX(self.model.get_net_address(), int(self.model.get_port_number()))
@@ -1078,7 +1208,9 @@ class MainWindow(QMainWindow):
         # timer.start(5 * 1000)
         timer.start(MainWindow.COOLER_POWER_UPDATE_INTERVAL * 1000)
 
+    @tracelog
     def cooler_timer_fired(self):
+        """Periodic timer to update the cooler power display"""
         # print("cooler_timer_fired")
         (success, cooler_power, message) = self._cooling_server.get_cooler_power()
         if success:
@@ -1088,7 +1220,9 @@ class MainWindow(QMainWindow):
 
     # WOrker thread has told us the camera cooler has stopped.
     # This allows us to stop the cooler power timer and remove that display item
+    @tracelog
     def cooler_stopped(self):
+        """Receive signal that camera cooling has sotpped, stop power timer"""
         # print("cooler_stopped")
         if self._cooler_timer is not None:
             self._cooler_timer.stop()
@@ -1100,15 +1234,19 @@ class MainWindow(QMainWindow):
     # The worker thread reports that a frame has been successfully acquired.
     # If the option is on, do a save after the acquisition
 
+    @tracelog
     def frame_acquired(self, frame_set: FrameSet, row_index: int):
+        """Receive signal that a frame has been acquired. Update number complete"""
         # print(f"frame_acquired.  Frame Set: {frame_set}")
         frame_set.set_number_complete(frame_set.get_number_complete() + 1)
         # Tell the session table model about this change so the on-screen table can update
         self._session_table_model.table_row_changed(row_index)
         if self.model.get_auto_save_after_each_frame():
-            self.save_menu_triggered()
+            self.save_menu_triggered(None)
 
+    @tracelog
     def add_line_to_console_frame(self, message: str, level: int):
+        """Receive signal requesting a line be placed in the console frame"""
         # print(f"addLineToConsoleFrame({message})")
         self._mutex.lock()
         time_formatted = strftime("%H:%M:%S ")
@@ -1121,7 +1259,9 @@ class MainWindow(QMainWindow):
         self.ui.consoleList.scrollToItem(item_just_added)
         self._mutex.unlock()
 
+    @tracelog
     def session_started_row_index(self, row_index: int):
+        """Receive signal that a new row has started, highlight that row"""
         # print(f"session_started_row_index({row_index})")
         # Select the row in the table corresponding to this index, so it highlights
         self._mutex.lock()
@@ -1140,7 +1280,9 @@ class MainWindow(QMainWindow):
         self._mutex.unlock()
 
     # self._worker_object.startProgressBar.connect(self.start_session_progress_bar)
+    #tracelog
     def start_session_progress_bar(self, bar_maximum: int):
+        """Receive signal to turn on and start the progress bar"""
         # print(f"start_session_progress_bar({bar_maximum})")
         self._mutex.lock()
         self.ui.progressBar.setMaximum(bar_maximum)
@@ -1148,14 +1290,18 @@ class MainWindow(QMainWindow):
         self._mutex.unlock()
 
     # self._worker_object.updateProgressBar.connect(self.update_session_progress_bar)
+    #tracelog
     def update_session_progress_bar(self, new_value: int):
+        """Receive signal to update the progress bar"""
         # print(f"update_session_progress_bar({new_value})")
         self._mutex.lock()
         self.ui.progressBar.setValue(new_value)
         self._mutex.unlock()
 
     # Restore the controls that were disabled during the session
+    @tracelog
     def derestrict_session_buttons(self):
+        """Turn off former restrictions on UI buttons when session thread is done"""
         # print("derestrictSessionButtons")
 
         # Enable  Begin button on this page, disable Cancel
@@ -1167,13 +1313,17 @@ class MainWindow(QMainWindow):
             if tab_index != MainWindow.RUN_SESSION_TAB_INDEX:
                 self.ui.mainTabView.setTabEnabled(tab_index, True)
 
-    def cancel_session_button_clicked(self):
+    @tracelog
+    def cancel_session_button_clicked(self, _):
+        """Cancel button clicked, set flag to cancel sub-thread"""
         # print("cancelSessionButtonClicked")
         self.add_line_to_console_frame("** Cancel Requested **", 1)
         if self._thread_controller is not None:
             self._thread_controller.cancel_thread()
 
-    def save_as_menu_triggered(self):
+    @tracelog
+    def save_as_menu_triggered(self, _):
+        """Save As menu selected - prompt for file name and save file"""
         # print("saveAsMenuTriggered")
         file_name, _ = QFileDialog.getSaveFileName(self,
                                                    "Dark and Bias Frames Plan File",
@@ -1196,7 +1346,9 @@ class MainWindow(QMainWindow):
     # We're about to start a session that has "autosave after each frame" selected.
     # There needs to be a save file established.  If there isn't, use a dialog to ask
     # for one and if it is cancelled, don't do the session
+    @tracelog
     def save_for_session_with_autosave(self) -> bool:
+        """Before doing a session with autosave, ensure that a save file is established"""
         proceed = False
         # print("save_for_session_with_autosave")
         if self._file_path != "":
@@ -1216,24 +1368,30 @@ class MainWindow(QMainWindow):
         # print(f"save_for_session_with_autosave returns {proceed}")
         return proceed
 
-    def save_menu_triggered(self):
+    @tracelog
+    def save_menu_triggered(self, _):
+        """Save Menu selected.  Save file - do Save As if file name not yet known"""
         # print("saveMenuTriggered")
         if self._file_path == "":
             # print("  File not set, treating as SaveAs")
-            self.save_as_menu_triggered()
+            self.save_as_menu_triggered(None)
         else:
             # print(f"  File known ({self._file_path}, saving again")
             with open(self._file_path, "w") as re_saving_file:
                 re_saving_file.write(self.model.serialize_to_json())
             self.set_is_dirty(False)
 
-    def close_menu_triggered(self):
+    @tracelog
+    def close_menu_triggered(self, _):
+        """Intercept close menu to ensure we don't lose unsaved changes"""
         # print("closeMenuTriggered")
         self.protect_unsaved_close()
         app = QtWidgets.QApplication.instance()
         app.quit()
 
-    def open_menu_triggered(self):
+    @tracelog
+    def open_menu_triggered(self, _):
+        """Open menu selected - load a saved file"""
         # print("openMenuTriggered")
         #  Get last path from preferences to start the open dialog there
         settings = QSettings()
@@ -1263,7 +1421,9 @@ class MainWindow(QMainWindow):
             #  Remember this path in preferences so we come here next time
             settings.setValue("last_opened_path", file_name)
 
-    def new_menu_triggered(self):
+    @tracelog
+    def new_menu_triggered(self, _):
+        """NEW menu selected - open a new plan with default values"""
         # print("newMenuTriggered")
         # Protected save
         self.protect_unsaved_close()
@@ -1277,13 +1437,17 @@ class MainWindow(QMainWindow):
         self.ui.setWindowTitle(self.UNSAVED_WINDOW_TITLE)
         self.set_is_dirty(False)
 
+    @tracelog
     def app_about_to_quit(self):
+        """Intercept application quit to ensure we don't lose unsaved changes"""
         # print("appAboutToQuit")
         self.protect_unsaved_close()
 
     # We're about to close or quit.  If there is unsaved data, ask the user
     # if they want to save it before continuing with the close or quit
+    @tracelog
     def protect_unsaved_close(self):
+        """IF there are unsaved changes, give user a chance to save them"""
         # print("protectUnsavedClose")
         if self.is_dirty():
             # print("   File is dirty, check if save wanted")
@@ -1297,7 +1461,7 @@ class MainWindow(QMainWindow):
             # print(f"   Dialog returned {dialog_result}")
             if dialog_result == QMessageBox.Save:
                 # print("      SAVE button was pressed")
-                self.save_menu_triggered()
+                self.save_menu_triggered(None)
             else:
                 # print("      DISCARD button was pressed")
                 # Since they don't want to save, consider the document not-dirty
@@ -1307,7 +1471,9 @@ class MainWindow(QMainWindow):
             pass
 
     # Info about frame plan table
+    @tracelog
     def frame_plan_selected_rows(self) -> [int]:
+        """Return list of indices of rows selected in frame plan table"""
         selection_model: QItemSelectionModel = self.ui.framesPlanTable.selectionModel()
         indices: List[QModelIndex] = selection_model.selectedRows()
         selected_rows = []
@@ -1316,7 +1482,9 @@ class MainWindow(QMainWindow):
         return selected_rows
 
     # Select the given row indices in the frame plan table
+    @tracelog
     def frame_plan_select_rows(self, indices: List[int]):
+        """Select specified row(s) in frame plan table"""
         # Make up an item selection object for the rows in question, and all the columns
         selection: QItemSelection = QItemSelection()
         for row_index in indices:
@@ -1332,7 +1500,9 @@ class MainWindow(QMainWindow):
         selection_model.select(selection, QItemSelectionModel.Select)
 
     # If start or end times are set to be sun-based, calculate the time and put in the message
+    @tracelog
     def calculate_sun_based_times(self):
+        """Calculate sunrise/sunset-based times and place in display fields"""
         # print("calculateSunBasedTimes")
         # Start time
         start_time_type: str = self.model.get_start_time_type()
@@ -1376,14 +1546,18 @@ class MainWindow(QMainWindow):
 
     # The main window tab view tab has changed.
     # See if we've just entered the "run session" tab so we can populate the table
+    @tracelog
     def tab_view_tab_changed(self, selected_index):
+        """Respond to main tab being changed, populate session table if session tab"""
         # print(f"tabViewTabChanged: {selected_index}")
         if selected_index == self.RUN_SESSION_TAB_INDEX:
             # print("Run Session tab entered")
             self.populate_session_framesets_table()
 
     # Receive the camera autosave path from the network client, and display in the UI
+    @tracelog
     def display_camera_path(self, autosave_path: str):
+        """Receive signal giving server's path to auto save files, display it in session window"""
         self._mutex.lock()
         self.ui.cameraPath.setText(autosave_path)
         self._mutex.unlock()

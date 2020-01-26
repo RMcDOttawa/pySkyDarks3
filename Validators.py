@@ -1,7 +1,11 @@
+from tracelog import *
+
 class Validators:
     # Validate floating point number such as latitude, longitude
     @classmethod
+    @tracelog
     def valid_float_in_range(cls, proposed_value: str, min_value: float, max_value: float) -> float:
+        """Validate that a string is a floating point number in a given range"""
         # print(f"validFloatInRange({proposed_value},{min},{max})")
         # noinspection PyTypeChecker
         result: float = None
@@ -17,7 +21,9 @@ class Validators:
     # Validate integer number
 
     @classmethod
+    @tracelog
     def valid_int_in_range(cls, proposed_value: str, min_value: int, max_value: int) -> int:
+        """Validate that a string is an integer in a given range"""
         # print(f"validIntInRange({proposed_value},{min},{max})")
         # noinspection PyTypeChecker
         result: int = None

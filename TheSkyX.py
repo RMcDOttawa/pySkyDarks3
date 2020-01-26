@@ -1,6 +1,9 @@
 # Class to send and receive commands (Javascript commands and text responses) to the
 # server running TheSkyX
 import socket
+import sys
+
+from tracelog import *
 
 from PyQt5.QtCore import QMutex
 
@@ -20,7 +23,9 @@ class TheSkyX:
 
     # Get the autosave-path string from the camera.
     # Return a success flag and the path string, and an error message if needed
+    @tracelog
     def get_camera_autosave_path(self) -> (bool, str):
+        """Get the autosave file path the camera will use to save image files"""
         # print("TheSkyX/get_camera_autosave_path")
         command_with_return = "var path=ccdsoftCamera.AutoSavePath;" \
                 + "var Out;" \
@@ -29,19 +34,27 @@ class TheSkyX:
         return success, path_result, message
 
     # Tell TheSkyX to connect to the camera
+    @tracelog
     def connect_to_camera(self) -> (bool, str):
+        """Tell TheSkyX to connect to the camera"""
         command_line = "ccdsoftCamera.Connect();"
         (success, message) = self.send_command_no_return(command_line)
         return success, message
 
     # Tell TheSkyX to disconnect from the camera
+    @tracelog
     def disconnect_camera(self) -> (bool, str):
+        """Tell TheSkyX to disconnect from the camera"""
         command_line = "ccdsoftCamera.Disconnect();"
         (success, message) = self.send_command_no_return(command_line)
         return success, message
 
     # Tell TheSkyX to take a bias frame at given binning to the camera
-    def take_bias_frame(self, binning: int, auto_save_file: bool, asynchronous: bool) -> (bool, str):
+    @tracelog
+    def take_bias_frame(self, binning: int,
+                        auto_save_file: bool,
+                        asynchronous: bool) -> (bool, str):
+        """Take a bias frame of given binning"""
         command: str = "ccdsoftCamera.Autoguider=false;"    # Use main camera
         command += f"ccdsoftCamera.Asynchronous={self.js_bool(asynchronous)};"  # Async or wait?
         command += "ccdsoftCamera.Frame=2;"  # Type "2" is bias frame
@@ -66,7 +79,9 @@ class TheSkyX:
         return success, message
 
     # Set the camera cooling on or off and, if on, set the target temperature
+    @tracelog
     def set_camera_cooling(self, cooling_on: bool, target_temperature: float) -> (bool, str):
+        """Set camera cooling on or off, with given target temperature"""
         # print(f"set_camera_cooling({cooling_on},{target_temperature})")
         target_temperature_command = ""
         if cooling_on:
@@ -86,7 +101,9 @@ class TheSkyX:
     # Get temperature of the CCD camera.
     # Return a tuple with command success, temperature, error message
 
+    @tracelog
     def get_camera_temperature(self) -> (bool, float, str):
+        """Determine the temperature of the camera"""
         # print(f"get_camera_temperature()")
 
         # For testing, return a constant temperature a few times, then gradually let it rise
@@ -112,10 +129,12 @@ class TheSkyX:
 
     # Set up the camera parameters for an image (don't actually take the image)
     #  (success, message) = server.set_camera_image(frame_type, binning, exposure_seconds)
+    @tracelog
     def set_camera_image(self,
                          frame_type_code: int,  # light,bias,dark,flat = 1,2,3,4
                          binning: int,
                          exposure_seconds: float) -> (bool, str):
+        """Set acquisition parameters for the camera"""
         # print(f"set_camera_image({frame_type_code},{binning},{exposure_seconds})")
         command_with_no_return = "ccdsoftCamera.Autoguider = false;" \
                                 + f"ccdsoftCamera.Frame = {frame_type_code};" \
@@ -134,7 +153,9 @@ class TheSkyX:
         return success, message
 
     # Start taking image, asynchronously (i.e. command returns right away, doesn't wait for image)
+    @tracelog
     def start_image_asynchronously(self) -> (bool, str):
+        """Start asynchronous acquisition of one image"""
         # print("start_image_asynchronously")
         command_with_no_return = "ccdsoftCamera.Asynchronous=true;" \
                                 + "var cameraResult = ccdsoftCamera.TakeImage();" \
@@ -151,7 +172,9 @@ class TheSkyX:
     #        (complete_check_successful, is_complete, message) = server.get_exposure_is_complete()
     # Ask the camera if the asynchronous exposure we started is complete
     # Return command-success,  is-complete,  error-message
+    @tracelog
     def get_exposure_is_complete(self) -> (bool, bool, str):
+        """Determine whether camera is still busy with asynchronous image acquisition or is done"""
         # print("get_exposure_is_complete")
 
         command_with_no_return = "var complete = ccdsoftCamera.IsExposureComplete;" \
@@ -179,7 +202,9 @@ class TheSkyX:
         return command_success, is_complete, message
 
     # Send Abort to camera to stop the image in progress
+    @tracelog
     def abort_image(self) -> (bool, str):
+        """Abort image acquisition in progress"""
         # print("abort_image")
         command_line = "ccdsoftCamera.Abort();"
         (success, message) = self.send_command_no_return(command_line)
@@ -187,7 +212,9 @@ class TheSkyX:
 
     # Send a command to the server and get a returned result value
     # Return a 3-ple:  success flag,  response,  error message if any
+    @tracelog
     def send_command_with_return(self, command: str):
+        """Send a command to the server that returns a result, and extract the result"""
         # print(f"send_command_with_return({command})")
         command_packet = "/* Java Script */" \
                 + "/* Socket Start Packet */" \
@@ -198,7 +225,9 @@ class TheSkyX:
 
     # Send a command to the server with no returned value needed
     # Return a 2-ple:  success flag,    error message if any
+    @tracelog
     def send_command_no_return(self, command: str):
+        """Send a command to the server that does not return a result"""
         # print(f"send_command_with_return({command})")
         command_packet = "/* Java Script */" \
                 + "/* Socket Start Packet */" \
@@ -210,7 +239,9 @@ class TheSkyX:
 
     # Send command packet and read response
     # Return a 3-ple:  success flag,  response,  error message if any
+    @tracelog
     def send_command_packet(self, command_packet: str):
+        """Send command packet to server, read response"""
         # print(f"send_command_packet({command_packet})")
         result = ""
         success = False
@@ -235,6 +266,12 @@ class TheSkyX:
             except ConnectionRefusedError as cr:
                 success = False
                 result = ""
+            except Exception as ex:
+                print("Unexpected error:", sys.exc_info()[0])
+                print(type(ex))
+                print(ex.args)
+                print(ex)
+                raise
                 message = cr.strerror
         TheSkyX._server_mutex.unlock()
         return success, result, message
@@ -242,11 +279,14 @@ class TheSkyX:
     # Convert a bool to a string in javascript-bool format (lowercase)
     @staticmethod
     def js_bool(value: bool) -> str:
+        """Convert a boolean value to the string format used by JavaScript for the server"""
         return "true" if value else "false"
 
     # Get the cooler power level.
     # Return (success, power, message)
+    @tracelog
     def get_cooler_power(self) -> (bool, float, str):
+        """Ask TheSkyX for the current cooler power consumption in percent"""
         # print("get_cooler_power")
         command_with_return = "var power=ccdsoftCamera.ThermalElectricCoolerPower;" \
                 + "var Out;" \

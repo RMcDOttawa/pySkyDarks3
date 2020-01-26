@@ -11,7 +11,7 @@ from RmNetUtils import RmNetUtils
 from SessionController import SessionController
 from SessionTimeInfo import SessionTimeInfo
 from TheSkyX import TheSkyX
-
+from tracelog import *
 
 class SessionThreadWorker(QObject):
     PROGRESS_UPDATE_INTERVAL = 2  # Update progress bar every this many seconds
@@ -56,7 +56,9 @@ class SessionThreadWorker(QObject):
 
         self._download_times: {int: float} = {}  # We'll measure times of binnings later
 
+    @tracelog
     def run_session(self):
+        """Initiate the running of the worker thread for frame acquisition"""
         # print("SessionThreadWorker/run_session")
         self.console("Starting session", 1)
         normal_completion = False
@@ -96,8 +98,10 @@ class SessionThreadWorker(QObject):
     #       - No wait (start now); or
     #       - Wait until a given time, optionally reduced by Wake-On-Lan lead time
     # return a success indicator
+    @tracelog
     def wait_for_start_time(self, start_now: bool, start_time: datetime,
                             wake_on_lan_before: bool, wake_on_lan_lead_seconds: float) -> bool:
+        """Wait for the start time calculated from the session start information"""
         # print(f"wait_for_start_time({start_now},{start_time},{wake_on_lan_before},{wake_on_lan_lead_seconds})")
         success = True
         wait_seconds = self.start_wait_seconds(start_now, start_time, wake_on_lan_before, wake_on_lan_lead_seconds)
@@ -107,8 +111,10 @@ class SessionThreadWorker(QObject):
         return success
 
     @staticmethod
+    @tracelog
     def start_wait_seconds(start_now: bool, start_time: datetime,
                            wake_on_lan_before: bool, wake_on_lan_lead_seconds: float) -> float:
+        """Calculate the number of seconds to wait before session start"""
         # print(f"start_wait_seconds({start_now},{start_time},{wake_on_lan_before},{wake_on_lan_lead_seconds})")
         # Start with how long to wait
         if start_now:
@@ -132,7 +138,9 @@ class SessionThreadWorker(QObject):
         return wait_time
 
     @staticmethod
+    @tracelog
     def casual_interval_format(seconds: float) -> str:
+        """Format a time interval, given in seconds, to casual language for printing"""
         # print(f"casual_interval_format({seconds})")
         hours_string = ""
         minutes_string = ""
@@ -170,7 +178,9 @@ class SessionThreadWorker(QObject):
     # we normally use this function (rather than the no-progress-bar version) for longer
     # sleeps such as waiting for the camera to cool.  So the fact that the sleep may exceed
     # the requested amount by "update_interval" (2 seconds) is not a concern
+    @tracelog
     def sleep_with_progress_bar(self, wait_seconds: float) -> bool:
+        """Sleep given number of seconds, updating parent window progress bar periodically"""
         # print(f"sleep_with_progress_bar({wait_seconds})")
         self.startProgressBar.emit(int(round(wait_seconds)))
         # What time is the sleep finished?
@@ -184,7 +194,9 @@ class SessionThreadWorker(QObject):
         return self._controller.thread_running()
 
     # Do some console activity as a simulation of a session
+    @tracelog
     def session_simulator(self, minutes: float):
+        """Do some simulated activity in lieu of a real session, for thread testing"""
         stub_total_sleep_length = minutes * 60
         stub_message_interval = 1
         self.console(f"session twiddling for {stub_total_sleep_length} seconds", 1)
@@ -205,14 +217,18 @@ class SessionThreadWorker(QObject):
     # Emit a string to the console slot, so the main UI thread will pick it up
     # and add it to the console pane
 
+    @tracelog
     def console(self, message: str, level: int):
+        """Pass a message back to the parent UI for displaying in the console frame"""
         self.consoleLine.emit(message, level)
 
     # If requested, send wake-on-lan broadcast packet and then wait a given time interval
     # return an all-is-well indicator
 
+    @tracelog
     def optional_wake_on_lan(self, wake_requested: bool, wake_wait_time: float,
                              broadcast_address: str, mac_address: str):
+        """Send WakeOnLan packet to server if requested, and do requested post-send delay"""
         # print(f"optional_wake_on_lan({wake_requested},{wake_wait_time},{broadcast_address},{mac_address})")
         success = True
         if wake_requested:
@@ -227,20 +243,26 @@ class SessionThreadWorker(QObject):
 
     # Connect to TheSkyX as a connection test and, while we're at it, get and return the camera autosave path
     @staticmethod
+    @tracelog
     def get_camera_path(server: TheSkyX) -> (bool, str):
+        """Ask server for the path it is using to autosave acquired image files"""
         # print(f"get_camera_path()")
         (success, path, message) = server.get_camera_autosave_path()
         return success, path, message
 
     # Have TheSkyX connect to the camera
+    @tracelog
     def connect_to_camera(self, server: TheSkyX) -> bool:
+        """Ask server to connect to camera"""
         # self.console("Connecting to camera",1)
         (success, message) = server.connect_to_camera()
         if not success:
             self.console(f"Error connecting: {message}", 2)
         return success
 
+    @tracelog
     def start_cooling_camera(self, server: TheSkyX, cooling_info: CameraCoolingInfo) -> bool:
+        """Ask server to turn on camera cooling with given target temperature"""
         # print("start_cooling_camera")
         success = True
         if cooling_info.is_regulated:
@@ -258,7 +280,9 @@ class SessionThreadWorker(QObject):
     # Measure how long downloads take for all the binning-values in the list of frames
     # Do this by taking a bias frame at each binning.
     # Record in dictionary self._download_times: {int:float}, return a success flag
+    @tracelog
     def measure_download_times(self, server: TheSkyX) -> bool:
+        """Measure download times of all needed binnings by timing zero-length bias frames"""
         # print("measure_download_times entered")
         self.console("Measuring download times", 1)
         success = True
@@ -277,7 +301,9 @@ class SessionThreadWorker(QObject):
         return success
 
     # Time download for given binning.  Return seconds taken and a success indicator
+    @tracelog
     def time_download(self, server: TheSkyX, binning: int) -> (bool, float):
+        """Time an image capture and download"""
         # print(f"time_download({binning})")
         seconds = -1.0
         time_before: datetime = datetime.now()
@@ -299,7 +325,11 @@ class SessionThreadWorker(QObject):
     # Note that for the first attempt, we have already waited a bit while measuring download times, so we
     # take this into account in the first wait cycle.
 
-    def wait_for_cooling(self, server: TheSkyX, cooling_info: CameraCoolingInfo, time_started: datetime) -> bool:
+    @tracelog
+    def wait_for_cooling(self, server: TheSkyX,
+                         cooling_info: CameraCoolingInfo,
+                         time_started: datetime) -> bool:
+        """Wait for the camera to reach desired target temperature within a given tolerance"""
         # print(f"wait_for_cooling (started at {time_started})")
         self.console(f"Waiting for camera to cool to {cooling_info.target_temperature} degrees", 1)
         if cooling_info.is_regulated:
@@ -350,11 +380,13 @@ class SessionThreadWorker(QObject):
     # of the target.  If we don't reach the target after a given time, fail
     # Return two flags.  One is whether we cooled successfully (might not have but no error), 2nd is an error
 
+    @tracelog
     def one_cooling_attempt(self, server: TheSkyX,
                             target_temperature: float,
                             cooling_check_interval: float,
                             target_tolerance: float,
                             time_to_wait: float) -> (bool, bool):
+        """Make one attempt to cool camera to target temperature"""
         # print(f"one_cooling_attempt({target_temperature},{cooling_check_interval},{target_tolerance},{time_to_wait})")
         # Start progress bar for the total of the max duration
         self.startProgressBar.emit(int(round(time_to_wait)))
@@ -388,7 +420,9 @@ class SessionThreadWorker(QObject):
     # Sleep for the given amount of time.  No progress bar signals emitted.
     # Sleep in little increments, not one big hunk, and check if this thread
     # has been cancelled between increments.
+    @tracelog
     def sleep_no_progress_bar(self, sleep_time: float):
+        """Sleep a given time with no progress bar, but still checking for cancellation"""
         time_slept = 0
         while time_slept < sleep_time and self._controller.thread_running():
             # Sleep a chunk of time, or the remaining time, whichever is smaller
@@ -400,7 +434,9 @@ class SessionThreadWorker(QObject):
             sleep(time_to_sleep)
             time_slept += time_to_sleep
 
+    @tracelog
     def stop_cooling(self, server: TheSkyX, cooling_info: CameraCoolingInfo) -> bool:
+        """Ask server to turn off camera cooling"""
         print("stop_cooling")
         if cooling_info.is_regulated:
             (success, message) = server.set_camera_cooling(False, 0)
@@ -425,11 +461,13 @@ class SessionThreadWorker(QObject):
     # via console lines and highlighting the frameset being worked.
     # After each frame, tell the UI we have finished one so it can do a save if desired
 
+    @tracelog
     def acquire_frames(self,
                        server: TheSkyX,
                        frame_set_list: [FrameSet],
                        cooling_info: CameraCoolingInfo,
                        time_info: SessionTimeInfo) -> bool:
+        """Acquire all the required frames until session- or time-based end"""
         # print(f"acquire_frames entered")
         success = False
         # Use a for-loop because we need the row number
@@ -465,14 +503,18 @@ class SessionThreadWorker(QObject):
     #   We have stopped the imaging process because the user clicked "cancel".
     #   The camera doesn't know that and might still be imaging.  In fact, it almost certainly is.
     #   Check if image is still in progress and send an Abort if so
+    @tracelog
     def abort_image_from_cancellation(self, server):
+        """Ask server to abort an image if acquisition is in progress"""
         # print("abort_image_from_cancellation")
         (command_success, is_complete, message) = server.get_exposure_is_complete()
         if command_success and not is_complete:
             server.abort_image()
 
     #   Has the end time of this session been exceeded?
+    @tracelog
     def end_time_exceeded(self, time_info: SessionTimeInfo) -> bool:
+        """Determine if the session has exceeded its specified end time"""
         # print("end_time_exceeded")
         if time_info.get_end_when_done():
             # print("  We're doing \"end when done\", so time can never be exceeded.")
@@ -488,7 +530,10 @@ class SessionThreadWorker(QObject):
     #  Has the camera temperature risen more than allowed?  This could happen if the
     #  ambient temperature is high and the camera and other electronics are emitting enough
     #  heat that the cooler can't keep up.
-    def temperature_has_risen_too_much(self, server: TheSkyX, cooling_info: CameraCoolingInfo) -> bool:
+    @tracelog
+    def temperature_has_risen_too_much(self, server: TheSkyX,
+                                       cooling_info: CameraCoolingInfo) -> bool:
+        """Determine if camera temperature has risen above cancellation threshold"""
         # print("temperature_has_risen_too_much")
         if cooling_info.is_regulated and cooling_info.abort_on_temperature_rise:
             (success, temperature, error) = server.get_camera_temperature()
@@ -511,7 +556,6 @@ class SessionThreadWorker(QObject):
 
         return risen_too_much
 
-    #            if self.acquire_frame_set(server, frame_set, cooling_info, time_info):
     #   Acquire one frameset (which is multiple identical frames)
     #   Reasons to stop:
     #       All frames in this set acquired
@@ -519,11 +563,13 @@ class SessionThreadWorker(QObject):
     #       Session cancelled
     #       CCD temperature has risen too much
     #       Error
+    @tracelog
     def acquire_frame_set(self, server: TheSkyX,
                           frame_set: FrameSet,
                           row_index: int,
                           cooling_info: CameraCoolingInfo,
                           time_info: SessionTimeInfo) -> (bool, bool):
+        """Acquire one set of frames with given specifications"""
         # print("acquire_frame_set")
         continue_acquisition = True
 
@@ -575,9 +621,11 @@ class SessionThreadWorker(QObject):
     # If end time is "when done" then exceeds is always False.  Otherwise combine the exposure
     # time and download time and calculate what time such a frame would finish.
 
+    @tracelog
     def frame_would_exceed_end_time(self,
                                     frame_set: FrameSet,
                                     time_info: SessionTimeInfo) -> bool:
+        """Determine if proposed frame acquisition would exceed session end time"""
         # print(f"frame_would_exceed_end_time({frame_type},{binning},{exposure})")
         if time_info.get_end_when_done():
             # print("  Not using end time, can't exceed it")
@@ -595,14 +643,18 @@ class SessionThreadWorker(QObject):
         return would_exceed
 
     # Calculate how long the given exposure would take, including download time
+    @tracelog
     def calc_total_exposure_time(self, frame_set: FrameSet) -> float:
+        """Estimate how long proposed frame acquisition will take, including download"""
         # print(f"calc_total_exposure_time({frame_type},{binning},{exposure})")
         exposure_length = 0 if isinstance(frame_set, BiasFrameSet) else frame_set.get_exposure_seconds()
         total_time = exposure_length + self._download_times[frame_set.get_binning()]
         # print(f"calc_total_exposure_time returning {total_time}")
         return total_time
 
+    @tracelog
     def acquire_one_frame(self, server: TheSkyX, frame_set: FrameSet, row_index: int) -> bool:
+        """Begin asynchronous acquisition of one frame with given specifications"""
         # print("acquire_one_frame")
         # We want to acquire asynchronously so we can be alert for session cancel
         # Calculate how long image is likely to take
@@ -638,7 +690,9 @@ class SessionThreadWorker(QObject):
     #                 (resync_ok, message) = self.wait_for_camera_completion(server)
     # We ask the server if the exposure is complete.  If not, wait a brief time and ask again.
     # repeat for a maximum timeout period, then give up
+    @tracelog
     def wait_for_camera_completion(self, server) -> (bool, str):
+        """Re-sync with image acquisition already begun, waiting for completion"""
         # print("wait_for_camera_completion")
         success = False
         total_time_waiting = 0.0
@@ -670,7 +724,9 @@ class SessionThreadWorker(QObject):
     # We're done.  If the user has requested it we'll turn of the cooler and allow the
     # CCD to warm up for a given time before disconnecting.  Return success if nothing breaks.
 
+    @tracelog
     def warmup_if_requested(self, server: TheSkyX, cooling_info: CameraCoolingInfo) -> bool:
+        """Turn off camera cooling at end of session if requested, and wait given time"""
         # print("warmup_if_requested")
         if cooling_info.is_regulated and cooling_info.warm_up_when_done:
             (cooling_off_success, message) = server.set_camera_cooling(False, 0)
@@ -692,7 +748,9 @@ class SessionThreadWorker(QObject):
         return success
 
     # When done, if requested, disconnect camera
+    @tracelog
     def disconnect_if_requested(self, server: TheSkyX, disconnect_requested: bool) -> bool:
+        """If requested, disconnect camera at end of session"""
         print(f"disconnect_if_requested({disconnect_requested})")
         success = False
         if disconnect_requested:

@@ -1,4 +1,5 @@
 from FrameSet import FrameSet
+from tracelog import *
 
 
 class DarkFrameSet(FrameSet):
@@ -15,7 +16,9 @@ class DarkFrameSet(FrameSet):
     def get_exposure_seconds(self): return self._exposure_seconds
     def set_exposure_seconds(self, value):  self._exposure_seconds = value
 
+    #tracelog
     def fieldNumberAsString(self, field_number: int) -> str:
+        """Translate column number of frame table to a string, for dark frames"""
         result = "invalid"
         if field_number == 0:
             result = str(self._numberOfFrames)
@@ -36,21 +39,27 @@ class DarkFrameSet(FrameSet):
         return f"DarkFrameSet<{self._numberOfFrames} DARK {str(self._exposure_seconds)} secs" \
                 + f"{self._binning} x {self._binning} ({str(self._numberComplete)} complete)>"
 
+    @tracelog
     def encode(self):
+        """JSON-encode this Dark Frame set"""
         return {
             "_type": "DarkFrameSet",
             "_value": self.__dict__
         }
 
     def type_name_text(self) -> str:
+        """Return printable name for this kind of frame"""
         return "Dark"
 
     # The numeric type code for THeSkyX for this kind of image.  2=Bias, 3=Dark
+    @tracelog
     def camera_image_type_code(self) -> int:
+        """Return magic type number that TheSkyX uses for dark frames"""
         return 3
 
     @classmethod
     def decode(cls, obj):
+        """Make a DarkFrameSet from json-encoded dict object"""
         # print(f"DarkFrameSet/decode({obj}")
         assert (obj["_type"] == "DarkFrameSet")
         value_dict = obj['_value']
