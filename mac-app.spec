@@ -1,21 +1,16 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+# This spec file is used with pyinstaller to generate a stand-alone mac application
+
 block_cipher = None
 
 
 a = Analysis(['pySkyDarks3.py'],
              pathex=['/Users/richard/DropBox/dropbox/EWHO/Application Development/pySkyDarks3'],
              binaries=[],
-             datas=[('MainWindow.ui','.'), 
-             ('AddFrameSet.ui','.'), 
-             ('BulkEntry.ui', '.'), 
-             ('de421.bsp', 'skyfield/data'), 
-             ('deltat.data','skyfield/data'), 
-             ('deltat.preds','skyfield/data'), 
-             ('Leap_Second.dat','skyfield/data'),
-             ('nutation.npz', 'skyfield/data'), 
-             ('historic_deltat.npy', 'skyfield/data'),
-             ('morrison_stephenson_deltat.npy', 'skyfield/data')],
+             datas=[('MainWindow.ui', '.'),
+             ('BulkEntry.ui', '.'),
+             ('AddFrameSet.ui', '.')],
              hiddenimports=[],
              hookspath=[],
              runtime_hooks=[],
@@ -39,4 +34,8 @@ exe = EXE(pyz,
           upx=True,
           upx_exclude=[],
           runtime_tmpdir=None,
-          console=True )
+          console=False )
+app = BUNDLE(exe,
+             name='pySkyDarks3.app',
+             icon=None,
+             bundle_identifier=None)

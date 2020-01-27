@@ -1,21 +1,17 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+# This spec file is used with pyinstaller to generate a minimal unix executable that must
+# be run from within the created directory, where all the file dependencies will be located
+
 block_cipher = None
 
 
 a = Analysis(['pySkyDarks3.py'],
              pathex=['/Users/richard/DropBox/dropbox/EWHO/Application Development/pySkyDarks3'],
              binaries=[],
-             datas=[('MainWindow.ui','.'), 
-             ('AddFrameSet.ui','.'), 
-             ('BulkEntry.ui', '.'), 
-             ('de421.bsp', 'skyfield/data'), 
-             ('deltat.data','skyfield/data'), 
-             ('deltat.preds','skyfield/data'), 
-             ('Leap_Second.dat','skyfield/data'),
-             ('nutation.npz', 'skyfield/data'), 
-             ('historic_deltat.npy', 'skyfield/data'),
-             ('morrison_stephenson_deltat.npy', 'skyfield/data')],
+             datas=[('MainWindow.ui', '.'),
+             ('BulkEntry.ui', '.'),
+             ('AddFrameSet.ui', '.')],
              hiddenimports=[],
              hookspath=[],
              runtime_hooks=[],

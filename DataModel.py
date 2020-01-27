@@ -1,10 +1,9 @@
 import json
 from datetime import date, datetime, timedelta, time, MAXYEAR
 from time import strptime, mktime
+from typing import Optional
 
-from skyfield.api import load
-from skyfield.toposlib import Topos
-from tracelog import *
+import ephem
 
 from BiasFrameSet import BiasFrameSet
 from CameraCoolingInfo import CameraCoolingInfo
@@ -16,8 +15,7 @@ from FrameSet import FrameSet
 from SessionTimeInfo import SessionTimeInfo
 from StartDate import StartDate
 from StartTime import StartTime
-
-from skyfield import almanac, api
+from tracelog import *
 
 
 class DataModel:
@@ -25,6 +23,10 @@ class DataModel:
     LATITUDE_NULL: float = -99999.0  # Indicates latitude not set
     LONGITUDE_NULL: float = -99998.0  # Indicates longitude not set
     TIMEZONE_NULL: int = -99999
+    NAVAL_OBSERVATORY_HORIZON = '-0:34'
+    CIVIL_TWILIGHT_HORIZON = '-6'
+    NAUTICAL_TWILIGHT_HORIZON = '-12'
+    ASTRONOMICAL_TWILIGHT_HORIZON = '-18'
 
     # On initialization, we create some dummy FrameSets for testing
     def __init__(self):
@@ -83,35 +85,6 @@ class DataModel:
         # When the session is running, we'll automatically save the control file after each frame
         # (if requested) so we have an up-to-date plan should a failure occur
         self._autoSaveAfterEachFrame = True
-
-        # Time scale is not loaded yet - load when needed
-        # self._skyFieldTimeScale = None
-        self._skyFieldTimeScale = 0
-        self._skyFieldTimeScaleNeedsLoad = True
-        # Ephemeris for earth not loaded initially - load when needed
-        # self._ephemeris = None
-        self._ephemeris = 0
-        self._ephemerisNeedsLoad = True
-
-    # Clear the cached ephemeris objects before encoding the data model
-    # (they will automatically reload the next time they are needed).
-
-    @tracelog
-    def clear_ephemeris(self):
-        """Set sunset calculation ephemeris fields to null to avoid writing them to save files"""
-        self._skyFieldTimeScale = 0
-        self._ephemeris = 0
-        self._skyFieldTimeScaleNeedsLoad = True
-        self._ephemerisNeedsLoad = True
-
-    @tracelog
-    def restore_ephemeris(self, saved_data: ()):
-        """Restore saved sunset calculation ephemeris values"""
-        assert (len(saved_data) == 4)
-        self._skyFieldTimeScale = saved_data[0]
-        self._ephemeris = saved_data[2]
-        self._skyFieldTimeScaleNeedsLoad = saved_data[1]
-        self._ephemerisNeedsLoad = saved_data[3]
 
     # Getters and Setters
     # _locationName
@@ -491,25 +464,14 @@ class DataModel:
         # print(f"calcSunset({start_date_type}, {given_start_date})")
         # Get the date to use - today or a given date
         assert isinstance(given_start_date, date)
-        if start_date_type == StartDate.GIVEN_DATE:
-            year = given_start_date.year
-            month = given_start_date.month
-            day = given_start_date.day
-        else:
-            now = datetime.now()
-            year = now.year
-            month = now.month
-            day = now.day
+        (year, month, day) = self.interpret_start_date(start_date_type, given_start_date)
         # print(f"   Using date: {year},{month},{day}")
-        ts = self.get_sky_field_time_scale()
-        planets = self.get_ephemeris()
-        location = self.get_location_topos(self._latitude, self._longitude)
-        start_of_day = ts.utc(year, month, day, 0, 0, 0)
-        end_of_day = ts.utc(year, month, day, 23, 59, 59)
-        srs_array, y = almanac.find_discrete(start_of_day, end_of_day, almanac.sunrise_sunset(planets, location))
-        # sunrise_local = srs_array[0].utc_datetime() + timedelta(hours=self._timeZone)
-        sunset_local_datetime: datetime = srs_array[1].utc_datetime() + timedelta(hours=self._timeZone)
-        sunset_local_time: time = sunset_local_datetime.time()
+        observer = self.get_observer(year, month, day, self.NAVAL_OBSERVATORY_HORIZON)
+        sun = ephem.Sun()
+        sunset_utc = observer.next_setting(sun)
+        sunset_local_time = ephem.localtime(sunset_utc).time()
+        # print(f"Sunset UTC:{sunset_utc} local:{sunset_local_time}")
+
         return sunset_local_time
 
     # Calculate the time of sunrise
@@ -518,10 +480,31 @@ class DataModel:
         """Calculate sunrise time for the specified date"""
         # print(f"calcSunrise({end_date_type}, {given_end_date})")
         assert isinstance(given_end_date, date)
+
         # Get the date to use - today or a given date
-        # if "today" but we are past sunset, use tomorrow
+        (year, month, day) = self.interpret_end_date(end_date_type, given_end_date)
+
+        observer = self.get_observer(year, month, day, self.NAVAL_OBSERVATORY_HORIZON)
+        sun = ephem.Sun()
+        sunrise_utc = observer.next_rising(sun)
+        sunrise_local_time = ephem.localtime(sunrise_utc).time()
+
+        # If sunrise has already occurred and end type is "TODAY_TOMORROW", we'll re-calculate it
+        # for tomorrow.
         today: datetime = datetime.now()
         current_time = today.time()
+        if (current_time > sunrise_local_time) and (end_date_type == EndDate.TODAY_TOMORROW):
+            # print(f"   Sunrise {sunrise_local_time} has already occurred, switching to tomorrow")
+            tomorrow = today + timedelta(days=1)
+            # print(f"   Tomorrow: {tomorrow}")
+            sunrise_local_time = self.calc_sunrise(EndDate.GIVEN_DATE, tomorrow.date())
+            # print(f"   Adjusted sunrise: {sunrise_local_time}")
+        return sunrise_local_time
+
+
+    @tracelog
+    def interpret_end_date(self, end_date_type: str, given_end_date: date) -> (int, int, int):
+        today: datetime = datetime.now()
         if end_date_type == EndDate.GIVEN_DATE:
             year = given_end_date.year
             month = given_end_date.month
@@ -530,39 +513,25 @@ class DataModel:
             year = today.year
             month = today.month
             day = today.day
-        # print(f"   Using date: {year}-{month}-{day}")
-        ts = self.get_sky_field_time_scale()
-        planets = self.get_ephemeris()
-        location = self.get_location_topos(self._latitude, self._longitude)
-        start_of_day = ts.utc(year, month, day, 0, 0, 0)
-        end_of_day = ts.utc(year, month, day, 23, 59, 59)
-        srs_array, y = almanac.find_discrete(start_of_day, end_of_day, almanac.sunrise_sunset(planets, location))
-        sunrise_local_datetime = srs_array[0].utc_datetime() + timedelta(hours=self._timeZone)
-        sunrise_local_time = sunrise_local_datetime.time()
+        return year, month, day
 
-        # If sunrise has already occurred and end type is "TODAY_TOMORROW", we'll re-calculate it
-        # for tomorrow.
+    # Calculate the various sun-based times, based on current location
+    @tracelog
+    def calc_civil_dusk(self, start_date_type: str, given_start_date: date) -> time:
+        """Calculate the time of Civil Dusk on the given date"""
+        assert isinstance(given_start_date, date)
 
-        if (current_time > sunrise_local_time) and (end_date_type == EndDate.TODAY_TOMORROW):
-            # print(f"   Sunrise {sunrise_local} has already occurred, switching to tomorrow")
-            tomorrow = today + timedelta(days=1)
-            # print(f"   Tomorrow: {tomorrow}")
-            sunrise_local_time = self.calc_sunrise(EndDate.GIVEN_DATE, tomorrow.date())
-            # print(f"   Adjusted sunrise: {sunrise_local}")
-        # sunset_local = srs_array[1].utc_datetime() + timedelta(hours=self._timeZone)
-        return sunrise_local_time
-        # sunset_local_datetime : datetime = srs_array[1].utc_datetime() + timedelta(hours=self._timeZone)
-        # sunset_local_time : time = sunset_local_datetime.time()
-        # return sunset_local_time
+        (year, month, day) = self.interpret_start_date(start_date_type, given_start_date)
+
+        observer = self.get_observer(year, month, day, self.CIVIL_TWILIGHT_HORIZON)
+        sun = ephem.Sun()
+        dusk_utc = observer.next_setting(sun, use_center=True)
+        dusk_local_time = ephem.localtime(dusk_utc).time()
+
+        return dusk_local_time
 
     @tracelog
-    def calc_sunrise_and_sunset(self, start_date_type: str, given_start_date: date) -> [datetime, datetime]:
-        """Calculate sunrise and sunset times for the specified date"""
-        assert (self.can_calculate_sunrise())
-        assert (isinstance(given_start_date, date))
-
-        # print(f"calcSunriseAndSunset({start_date_type}, {given_start_date})")
-        # Get the date to use - today or a given date
+    def interpret_start_date(self, start_date_type: str, given_start_date: date) -> (int, int, int):
         if start_date_type == StartDate.GIVEN_DATE:
             year = given_start_date.year
             month = given_start_date.month
@@ -572,166 +541,122 @@ class DataModel:
             year = now.year
             month = now.month
             day = now.day
-        # print(f"   Using date: {year},{month},{day}")
-        ts = self.get_sky_field_time_scale()
-        planets = self.get_ephemeris()
-        location = self.get_location_topos(self._latitude, self._longitude)
-        start_of_day = ts.utc(year, month, day, 0, 0, 0)
-        end_of_day = ts.utc(year, month, day, 23, 59, 59)
-        srs_array, y = almanac.find_discrete(start_of_day, end_of_day, almanac.sunrise_sunset(planets, location))
-        sunrise_local = srs_array[0].utc_datetime() + datetime.timedelta(hours=self._timeZone)
-        sunset_local = srs_array[1].utc_datetime() + timedelta(hours=self._timeZone)
-        return sunrise_local, sunset_local
-
-    @tracelog
-    def get_sky_field_time_scale(self):
-        """Load the skyfield module's time scale data if not already cached"""
-        if self._skyFieldTimeScaleNeedsLoad:
-            self._skyFieldTimeScale = api.load.timescale()
-            self._skyFieldTimeScaleNeedsLoad = False
-        return self._skyFieldTimeScale
-
-    @tracelog
-    def get_ephemeris(self):
-        """Load the skyfield module's ephemeris data if not already cached"""
-        if self._ephemerisNeedsLoad:
-            self._ephemeris = load('de421.bsp')
-            self._ephemerisNeedsLoad = False
-        return self._ephemeris
-
-    # Calculate the various sun-based times, based on current location
-    @tracelog
-    def calc_civil_dusk(self, start_date_type: str, given_start_date: date) -> time:
-        """Calculate the time of Civil Dusk on the given date"""
-        # print(f"calcCivilDusk({start_date_type}, {given_start_date})")
-        assert isinstance(given_start_date, date)
-        twilight_times = self.calc_start_twilight_times(start_date_type, given_start_date)
-        return twilight_times[5].time()
+        return year, month, day
 
     @tracelog
     def calc_nautical_dusk(self, start_date_type: str, given_start_date: date) -> time:
         """Calculate the time of Nautical Dusk on the given date"""
-        # print(f"calcNauticalDusk({start_date_type}, {given_start_date})")
         assert isinstance(given_start_date, date)
-        twilight_times = self.calc_start_twilight_times(start_date_type, given_start_date)
-        return twilight_times[6].time()
+        (year, month, day) = self.interpret_start_date(start_date_type, given_start_date)
+
+        observer = self.get_observer(year, month, day, self.NAUTICAL_TWILIGHT_HORIZON)
+        sun = ephem.Sun()
+        dusk_utc = observer.next_setting(sun, use_center=True)
+        dusk_local_time = ephem.localtime(dusk_utc).time()
+
+        return dusk_local_time
 
     @tracelog
     def calc_astronomical_dusk(self, start_date_type: str, given_start_date: date) -> time:
         """Calculate the time of Astronomical Dusk on the given date"""
-        # print(f"calcAstronomicalDusk({start_date_type}, {given_start_date})")
         assert isinstance(given_start_date, date)
-        twilight_times = self.calc_start_twilight_times(start_date_type, given_start_date)
-        return twilight_times[7].time()
+        (year, month, day) = self.interpret_start_date(start_date_type, given_start_date)
+
+        observer = self.get_observer(year, month, day, self.ASTRONOMICAL_TWILIGHT_HORIZON)
+        sun = ephem.Sun()
+        dusk_utc = observer.next_setting(sun, use_center=True)
+        dusk_local_time = ephem.localtime(dusk_utc).time()
+
+        return dusk_local_time
 
     @tracelog
     def calc_civil_dawn(self, end_date_type: str, given_end_date: date) -> time:
         """Calculate the time of Civil Dawn on the given date"""
         # print(f"calcCivilDawn({end_date_type}, {given_end_date})")
         assert isinstance(given_end_date, date)
-        twilight_times = self.calc_end_twilight_times(end_date_type, given_end_date)
-        return twilight_times[2].time()
+        # Get the date to use - today or a given date
+        (year, month, day) = self.interpret_end_date(end_date_type, given_end_date)
+
+        observer = self.get_observer(year, month, day, self.CIVIL_TWILIGHT_HORIZON)
+        sun = ephem.Sun()
+        sunrise_utc = observer.next_rising(sun)
+        sunrise_local_time = ephem.localtime(sunrise_utc).time()
+
+        # If dawn has already occurred and end type is "TODAY_TOMORROW", we'll re-calculate it
+        # for tomorrow.
+        today: datetime = datetime.now()
+        current_time = today.time()
+        if (current_time > sunrise_local_time) and (end_date_type == EndDate.TODAY_TOMORROW):
+            # print(f"   Civil dawn {sunrise_local_time} has already occurred, switching to tomorrow")
+            tomorrow = today + timedelta(days=1)
+            # print(f"   Tomorrow: {tomorrow}")
+            sunrise_local_time = self.calc_civil_dawn(EndDate.GIVEN_DATE, tomorrow.date())
+            # print(f"   Adjusted Civil dawn: {sunrise_local_time}")
+        return sunrise_local_time
 
     @tracelog
     def calc_nautical_dawn(self, end_date_type: str, given_end_date: date) -> time:
         """Calculate the time of Nautical Dawn on the given date"""
         # print(f"calcNauticalDawn({start_date_type}, {given_start_date})")
         assert isinstance(given_end_date, date)
-        twilight_times = self.calc_end_twilight_times(end_date_type, given_end_date)
-        return twilight_times[1].time()
+        # Get the date to use - today or a given date
+        (year, month, day) = self.interpret_end_date(end_date_type, given_end_date)
+
+        observer = self.get_observer(year, month, day, self.NAUTICAL_TWILIGHT_HORIZON)
+        sun = ephem.Sun()
+        sunrise_utc = observer.next_rising(sun)
+        sunrise_local_time = ephem.localtime(sunrise_utc).time()
+
+        # If dawn has already occurred and end type is "TODAY_TOMORROW", we'll re-calculate it
+        # for tomorrow.
+        today: datetime = datetime.now()
+        current_time = today.time()
+        if (current_time > sunrise_local_time) and (end_date_type == EndDate.TODAY_TOMORROW):
+            # print(f"   Nautical dawn {sunrise_local_time} has already occurred, switching to tomorrow")
+            tomorrow = today + timedelta(days=1)
+            # print(f"   Tomorrow: {tomorrow}")
+            sunrise_local_time = self.calc_nautical_dawn(EndDate.GIVEN_DATE, tomorrow.date())
+            # print(f"   Adjusted Nautical dawn: {sunrise_local_time}")
+        return sunrise_local_time
 
     @tracelog
     def calc_astronomical_dawn(self, end_date_type: str, given_end_date: date) -> time:
         """Calculate the time of Astronomical Dawn on the given date"""
         # print(f"calcAstronomicalDawn({start_date_type}, {given_start_date})")
         assert isinstance(given_end_date, date)
-        twilight_times = self.calc_end_twilight_times(end_date_type, given_end_date)
-        return twilight_times[0].time()
-
-    # Get twilight times from SkyField module
-    # Result array
-    #   Index       Value
-    #   0           Astronomical Dawn
-    #   1           Nautical Dawn
-    #   2           Civil Dawn
-    #   3           Sunrise
-    #   4           Sunset
-    #   5           Civil Dusk
-    #   6           Nautical Dusk
-    #   7           Astronomical Dusk
-    @tracelog
-    def calc_start_twilight_times(self, start_date_type: str, given_start_date: date) -> []:
-        """Get the start-of-twilight calculations from the skyfield module"""
-        assert (self.can_calculate_sunrise())
-        assert (isinstance(given_start_date, date))
-        # print(f"calc_start_twilight_times({start_date_type}, {given_start_date})")
         # Get the date to use - today or a given date
-        if start_date_type == StartDate.GIVEN_DATE:
-            year = given_start_date.year
-            month = given_start_date.month
-            day = given_start_date.day
-        else:
-            now = datetime.now()
-            year = now.year
-            month = now.month
-            day = now.day
-        # print(f"   Using date: {year},{month},{day}")
-        ts = self.get_sky_field_time_scale()
-        planets = self.get_ephemeris()
-        location = self.get_location_topos(self._latitude, self._longitude)
-        start_of_day = ts.utc(year, month, day, 0, 0, 0)
-        end_of_day = ts.utc(year, month, day, 23, 59, 59)
-        srs_array, y = almanac.find_discrete(start_of_day, end_of_day, almanac.dark_twilight_day(planets, location))
-        local_times = list(map(lambda x: x.utc_datetime() + timedelta(hours=self._timeZone), srs_array))
-        return local_times
+        (year, month, day) = self.interpret_end_date(end_date_type, given_end_date)
 
-    @tracelog
-    def calc_end_twilight_times(self, end_date_type: str, given_end_date: date) -> []:
-        """Get the end-of-twilight calculations from the skyfield module"""
-        assert (self.can_calculate_sunrise())
-        assert (isinstance(given_end_date, date))
-        # print(f"calc_end_twilight_times({end_date_type}, {given_end_date})")
-        # Get the date to use - today or a given date
-        if end_date_type == EndDate.GIVEN_DATE:
-            year = given_end_date.year
-            month = given_end_date.month
-            day = given_end_date.day
-        else:
-            now = datetime.now()
-            year = now.year
-            month = now.month
-            day = now.day
-        # print(f"   Using date: {year},{month},{day}")
-        ts = self.get_sky_field_time_scale()
-        planets = self.get_ephemeris()
-        location = self.get_location_topos(self._latitude, self._longitude)
-        start_of_day = ts.utc(year, month, day, 0, 0, 0)
-        end_of_day = ts.utc(year, month, day, 23, 59, 59)
-        srs_array, y = almanac.find_discrete(start_of_day, end_of_day, almanac.dark_twilight_day(planets, location))
-        local_times = list(map(lambda x: x.utc_datetime() + timedelta(hours=self._timeZone), srs_array))
-        return local_times
+        observer = self.get_observer(year, month, day, self.ASTRONOMICAL_TWILIGHT_HORIZON)
+        sun = ephem.Sun()
+        sunrise_utc = observer.next_rising(sun)
+        sunrise_local_time = ephem.localtime(sunrise_utc).time()
 
-    # Get SkyField topo location for latitude and longitude
-    @staticmethod
-    @tracelog
-    def get_location_topos(latitude: float, longitude: float) -> Topos:
-        """Calculat the skyfield module's topo location information for the site"""
-        assert ((latitude != DataModel.LATITUDE_NULL) and (longitude != DataModel.LONGITUDE_NULL))
-        return api.Topos(latitude, longitude)
+        # If dawn has already occurred and end type is "TODAY_TOMORROW", we'll re-calculate it
+        # for tomorrow.
+        today: datetime = datetime.now()
+        current_time = today.time()
+        if (current_time > sunrise_local_time) and (end_date_type == EndDate.TODAY_TOMORROW):
+            # print(f"   Astronomical dawn {sunrise_local_time} has already occurred, switching to tomorrow")
+            tomorrow = today + timedelta(days=1)
+            # print(f"   Tomorrow: {tomorrow}")
+            sunrise_local_time = self.calc_astronomical_dawn(EndDate.GIVEN_DATE, tomorrow.date())
+            # print(f"   Adjusted Astronomical dawn: {sunrise_local_time}")
+        return sunrise_local_time
 
     # Produce a JSON serialization of this data model for writing to a file
     @tracelog
     def serialize_to_json(self) -> str:
         """Convert the data modle to a json-encoded string"""
         # print("serializeToJson")
-        self.clear_ephemeris()
+        # self.clear_ephemeris()
         serialized = json.dumps(self.__dict__, cls=DataModelEncoder, indent=4)
         return serialized
 
     # Update all the local fields in this model from the given loaded JSON dictionary
     @tracelog
     def update_from_loaded_json(self, new_values: {}):
-        """Set data modl field from given json-encoded dict"""
+        """Set data model fields from given json-encoded dict"""
         # print(f"DataModel/updateFromLoadedJson: {new_values}")
         # Do the update manually so we can test for missing and extra key/value pairs
         for k, v in self.__dict__.items():
@@ -833,10 +758,10 @@ class DataModel:
 
     # Returns a time object without timezone offset
     @tracelog
-    def appropriate_start_time(self) -> time:
+    def appropriate_start_time(self) -> Optional[time]:
         """Get the appropriate start time given the various time and sunset settings."""
         # print("appropriate_start_time entered")
-        result: time = None
+        result: Optional[time] = None
         start_date: date = date.today()
         _start_date_type = self.get_start_date_type()
         _given_start_date_string: str = self.get_given_start_date()
@@ -870,10 +795,10 @@ class DataModel:
 
     # Returns a time object without timezone offset
     @tracelog
-    def appropriate_end_time(self):
+    def appropriate_end_time(self) -> Optional[time]:
         """Get the appropriate end time given the various time and sunset settings."""
         # print("appropriate_end_time entered")
-        result: time = None
+        result: Optional[time] = None
         end_date = date.today()
         end_date_type: str = self.get_end_date_type()
         given_end_date_string: str = self.get_given_end_date()
@@ -912,3 +837,13 @@ class DataModel:
                                  self._temperatureFailRetryDelaySeconds, self._temperatureAbortOnRise,
                                  self._temperatureAbortRiseLimit,
                                  self._warmUpWhenDone, self._warmUpWhenDoneSecs)
+
+    def get_observer(self, year: int, month: int, day: int, horizon: str) -> ephem.Observer:
+        result = ephem.Observer()
+        result.lat = str(self.get_latitude())
+        result.lon = str(self.get_longitude())
+        result.date = datetime(year, month, day)
+        result.elevation = 3  # meters
+        result.pressure = 0  # millibar
+        result.horizon = horizon
+        return result
