@@ -1005,7 +1005,7 @@ class MainWindow(QMainWindow):
     # "Reset Completed" has been clicked.
     #  Do a "are you sure" dialog, then set all the completed counts in the plan to zero
     @tracelog
-    def reset_completed_counts(self):
+    def reset_completed_counts(self, _):
         """Set all the completed counts in the frame plan bck to zero after a confirmation dialog"""
         # print("reset_completed_counts")
         confirmation_dialog: QMessageBox = QMessageBox()
