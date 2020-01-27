@@ -30,7 +30,6 @@ class AddFrameSetDialog(QDialog):
     @tracelog
     def setupUI(self, new_set: bool, frame_set=None):
         """Initialize UI fields in the dialog"""
-        print("AddFrameSetDialog setupUI entered")
 
         # Remember the frame set that was used to set up this window.
         # If we're creating a new one, this will be None, and will result in
@@ -84,8 +83,6 @@ class AddFrameSetDialog(QDialog):
         self._completedValid = True
         self.enableControls()
         
-        print("AddFrameSetDialog setupUI exits")
-
     #  Enable the Add button depending on validity of input fields
     @tracelog
     def enableControls(self):

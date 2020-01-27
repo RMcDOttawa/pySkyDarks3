@@ -21,5 +21,5 @@ class DataModelDecoder(JSONDecoder):
             result = DarkFrameSet.decode(obj)
         else:
             print(f"** Unknown custom object type in decoder: {custom_type_name}")
-            assert False
+            result = None
         return result

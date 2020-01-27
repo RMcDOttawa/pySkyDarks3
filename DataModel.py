@@ -1,5 +1,6 @@
 import json
 from datetime import date, datetime, timedelta, time, MAXYEAR
+from json import JSONDecodeError
 from time import strptime, mktime
 from typing import Optional
 
@@ -8,6 +9,7 @@ import ephem
 from BiasFrameSet import BiasFrameSet
 from CameraCoolingInfo import CameraCoolingInfo
 from DarkFrameSet import DarkFrameSet
+from DataModelDecoder import DataModelDecoder
 from DataModelEncoder import DataModelEncoder
 from EndDate import EndDate
 from EndTime import EndTime
@@ -461,7 +463,6 @@ class DataModel:
     @tracelog
     def calc_sunset(self, start_date_type: str, given_start_date: date) -> time:
         """Calculate sunset time for the specified date"""
-        # print(f"calcSunset({start_date_type}, {given_start_date})")
         # Get the date to use - today or a given date
         assert isinstance(given_start_date, date)
         (year, month, day) = self.interpret_start_date(start_date_type, given_start_date)
@@ -648,8 +649,6 @@ class DataModel:
     @tracelog
     def serialize_to_json(self) -> str:
         """Convert the data modle to a json-encoded string"""
-        # print("serializeToJson")
-        # self.clear_ephemeris()
         serialized = json.dumps(self.__dict__, cls=DataModelEncoder, indent=4)
         return serialized
 
@@ -682,6 +681,27 @@ class DataModel:
         # print("loadFromModel")
         self.__dict__.update(source_model.__dict__)
         return
+
+    # Create a new data model by reading from the specified file
+    @classmethod
+    def make_from_file_named(cls, file_name: str):
+        loaded_model = None
+        try:
+            with open(file_name, "r") as file:
+                loaded_json = json.load(file, cls=DataModelDecoder)
+                if loaded_json is None:
+                    print(f"File \"{file_name}\" is not a saved pySkyDarks file (wrong object type)")
+                    return None
+                if not DataModel.valid_json_model(loaded_json):
+                    print(f"File \"{file_name}\" is not a valid pySkyDarks file (wrong object type)")
+                    return None
+                loaded_model = DataModel()
+                loaded_model.update_from_loaded_json(loaded_json)
+        except FileNotFoundError:
+            print(f"File \"{file_name}\" not found")
+        except JSONDecodeError:
+            print(f"File \"{file_name}\" is not a saved FlatCaptureNow1 file (not json)")
+        return loaded_model
 
     # Get and return everything you'd need to know about when to start and end the session
     #  Start Time
@@ -847,3 +867,41 @@ class DataModel:
         result.pressure = 0  # millibar
         result.horizon = horizon
         return result
+
+
+    # Is the given dictionary a valid representation of a data model for this app?
+    # We'll check if the expected dict names, and no others, are present.  This is
+    # to check that a claimed json file is truly a valid data model representation.
+    # Note: we could go another level deep in obsessing over this by checking the
+    # data TYPES of the fields, but we don't.
+
+    required_dict_names = ("_locationName", "_timeZone", "_latitude",
+                           "_longitude", "_startDateType", "_startTimeType",
+                           "_givenStartDate", "_givenStartTime", "_endDateType",
+                           "_endTimeType", "_givenEndDate", "_givenEndTime",
+                           "_disconnectWhenDone", "_warmUpWhenDone", "_warmUpWhenDoneSecs",
+                           "_netAddress", "_portNumber", "_sendWakeOnLanBeforeStarting",
+                           "_sendWolSecondsBefore", "_wolMacAddress", "_wolBroadcastAddress",
+                           "_temperatureRegulated", "_temperatureTarget", "_temperatureWithin",
+                           "_temperatureSettleSeconds", "_maxCoolingWaitTime", "_temperatureFailRetryCount",
+                           "_temperatureFailRetryDelaySeconds", "_temperatureAbortOnRise",
+                           "_temperatureAbortRiseLimit", "_savedFrameSets", "_autoSaveAfterEachFrame"
+                           )
+
+    @classmethod
+    def valid_json_model(cls, loaded_json_model: {}) -> bool:
+        """confirm that the given json dict is a valid data model representation"""
+        seems_valid = True
+        # Are all the required fields present?
+        for required_name in DataModel.required_dict_names:
+            if required_name not in loaded_json_model:
+                print(f"Loaded file missing '{required_name}' value")
+                seems_valid = False
+
+        # Are there any fields present that shouldn't be?
+        for given_name in loaded_json_model.keys():
+            if given_name not in DataModel.required_dict_names:
+                print(f"Loaded file has unexpected '{given_name}' value")
+                seems_valid = False
+
+        return seems_valid
