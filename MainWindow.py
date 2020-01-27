@@ -56,6 +56,9 @@ class MainWindow(QMainWindow):
         self.ui.coolerPowerValue.setVisible(False)
         self._plan_table_model = None
 
+        # Always display the first tab on opening
+        self.ui.mainTabView.setCurrentIndex(0)
+
     def set_is_dirty(self, dirty: bool):
         """Record whether the open document has unsaved changes"""
         self._is_dirty = dirty
