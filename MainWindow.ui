@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>800</width>
-    <height>600</height>
+    <height>552</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -42,7 +42,7 @@
        <string/>
       </property>
       <property name="currentIndex">
-       <number>4</number>
+       <number>1</number>
       </property>
       <widget class="QWidget" name="startEndTab">
        <attribute name="title">
@@ -52,8 +52,8 @@
         <string>Information on when the collection run starts and ends</string>
        </attribute>
        <layout class="QGridLayout" name="gridLayout_3">
-        <item row="0" column="0" colspan="3">
-         <widget class="QLabel" name="label">
+        <item row="0" column="0" colspan="3" alignment="Qt::AlignHCenter">
+         <widget class="QLabel" name="MainTitle_1">
           <property name="minimumSize">
            <size>
             <width>0</width>
@@ -67,7 +67,7 @@
            </size>
           </property>
           <property name="text">
-           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;&lt;span style=&quot; font-size:18pt; font-weight:600;&quot;&gt;Session Start and End&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+           <string>Session Start and End</string>
           </property>
          </widget>
         </item>
@@ -103,9 +103,9 @@
         <item row="2" column="0">
          <layout class="QGridLayout" name="gridLayout">
           <item row="0" column="0" colspan="2">
-           <widget class="QLabel" name="label_8">
+           <widget class="QLabel" name="Subtitle_1">
             <property name="text">
-             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot;font-weight:bold;&quot;&gt;Session Start&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+             <string>Session Start</string>
             </property>
            </widget>
           </item>
@@ -392,9 +392,9 @@
            </widget>
           </item>
           <item row="0" column="0" colspan="2">
-           <widget class="QLabel" name="label_9">
+           <widget class="QLabel" name="Subtitle_2">
             <property name="text">
-             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot;font-weight:bold;&quot;&gt;Session End&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+             <string>Session End</string>
             </property>
            </widget>
           </item>
@@ -459,7 +459,7 @@
         <item row="4" column="0">
          <layout class="QVBoxLayout" name="verticalLayout_2">
           <item>
-           <widget class="QLabel" name="label_12">
+           <widget class="QLabel" name="Subtitle_3">
             <property name="minimumSize">
              <size>
               <width>0</width>
@@ -473,7 +473,7 @@
              </size>
             </property>
             <property name="text">
-             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot;font-weight:bold;&quot;&gt;Location (for Dusk/Dawn Calculation)&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+             <string>Location (for Dusk/Dawn Calculation)</string>
             </property>
            </widget>
           </item>
@@ -560,7 +560,7 @@
            <enum>QLayout::SetFixedSize</enum>
           </property>
           <item>
-           <widget class="QLabel" name="label_17">
+           <widget class="QLabel" name="Subtitle_4">
             <property name="minimumSize">
              <size>
               <width>0</width>
@@ -574,7 +574,7 @@
              </size>
             </property>
             <property name="text">
-             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot;font-weight:bold;&quot;&gt;When Done&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+             <string>When Done</string>
             </property>
            </widget>
           </item>
@@ -674,8 +674,8 @@
           <layout class="QGridLayout" name="gridLayout_9">
            <item row="0" column="0">
             <layout class="QGridLayout" name="gridLayout_4">
-             <item row="0" column="0" colspan="2">
-              <widget class="QLabel" name="label_40">
+             <item row="0" column="0" colspan="2" alignment="Qt::AlignHCenter">
+              <widget class="QLabel" name="MainTitle_tab1">
                <property name="sizePolicy">
                 <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
                  <horstretch>0</horstretch>
@@ -695,7 +695,7 @@
                 </size>
                </property>
                <property name="text">
-                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;&lt;span style=&quot; font-size:18pt; font-weight:600;&quot;&gt;Camera Temperature Settings&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                <string>Camera Temperature Settings</string>
                </property>
               </widget>
              </item>
@@ -1114,17 +1114,17 @@
             </property>
            </widget>
           </item>
-          <item row="0" column="0" colspan="5">
-           <widget class="QLabel" name="label_30">
+          <item row="0" column="0" colspan="5" alignment="Qt::AlignHCenter">
+           <widget class="QLabel" name="MainTitle_tab2">
             <property name="text">
-             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;&lt;span style=&quot; font-size:18pt; font-weight:600;&quot;&gt;Network Settings&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+             <string>Network Settings</string>
             </property>
            </widget>
           </item>
           <item row="2" column="0" colspan="2">
-           <widget class="QLabel" name="label_5">
+           <widget class="QLabel" name="Subtitle_tab3a">
             <property name="text">
-             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot;font-weight:600;&quot;&gt;Server Address&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+             <string>Server Address</string>
             </property>
            </widget>
           </item>
@@ -1183,9 +1183,9 @@
            </spacer>
           </item>
           <item row="2" column="3" colspan="2">
-           <widget class="QLabel" name="label_31">
+           <widget class="QLabel" name="Subtitle_tab3b">
             <property name="text">
-             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Wake on LAN&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+             <string>Wake on LAN</string>
             </property>
            </widget>
           </item>
@@ -1312,10 +1312,10 @@
           </property>
          </widget>
         </item>
-        <item row="0" column="0" colspan="10">
-         <widget class="QLabel" name="label_41">
+        <item row="0" column="0" colspan="10" alignment="Qt::AlignHCenter">
+         <widget class="QLabel" name="MainTitle_tab3">
           <property name="text">
-           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;&lt;span style=&quot; font-size:18pt; font-weight:600;&quot;&gt;Frame Sets to be Acquired&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+           <string>Frame Sets to be Acquired</string>
           </property>
          </widget>
         </item>
@@ -1482,13 +1482,6 @@
             </property>
            </widget>
           </item>
-          <item row="0" column="0">
-           <widget class="QLabel" name="label_38">
-            <property name="text">
-             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Console Log:&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-            </property>
-           </widget>
-          </item>
           <item row="3" column="3">
            <widget class="QPushButton" name="cancelSessionButton">
             <property name="enabled">
@@ -1503,9 +1496,9 @@
            </widget>
           </item>
           <item row="0" column="5">
-           <widget class="QLabel" name="label_39">
+           <widget class="QLabel" name="Subtitle_tab4b">
             <property name="text">
-             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Images Being Acquired:&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+             <string>Images Being Acquired:</string>
             </property>
            </widget>
           </item>
@@ -1557,6 +1550,13 @@
              </widget>
             </item>
            </layout>
+          </item>
+          <item row="0" column="0" colspan="4">
+           <widget class="QLabel" name="Subtitle_tab4a">
+            <property name="text">
+             <string>Console Log:</string>
+            </property>
+           </widget>
           </item>
          </layout>
         </item>
@@ -1637,9 +1637,9 @@
  <resources/>
  <connections/>
  <buttongroups>
-  <buttongroup name="startDay"/>
   <buttongroup name="endTimeButtonGroup"/>
-  <buttongroup name="startTime"/>
+  <buttongroup name="startDay"/>
   <buttongroup name="endDateButtonGroup"/>
+  <buttongroup name="startTime"/>
  </buttongroups>
 </ui>

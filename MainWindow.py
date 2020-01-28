@@ -3,12 +3,14 @@ from datetime import date, time
 from time import strftime
 from typing import List
 
+from PyQt5.QtGui import QFont
+
 from MultiOsUtil import MultiOsUtil
 from tracelog import *
 from PyQt5 import uic, QtWidgets, QtGui
 from PyQt5.QtCore import QMutex, QItemSelection, QModelIndex, QItemSelectionModel, QTime, QThread, QTimer, \
     QSettings, QDate, QEvent, QObject
-from PyQt5.QtWidgets import QMainWindow, QDialog, QMessageBox, QHeaderView, QFileDialog, QWidget
+from PyQt5.QtWidgets import QMainWindow, QDialog, QMessageBox, QHeaderView, QFileDialog, QWidget, QLabel
 
 from AddFrameSetDialog import AddFrameSetDialog
 from BulkEntryDialog import BulkEntryDialog
@@ -34,6 +36,8 @@ class MainWindow(QMainWindow):
     RUN_SESSION_TAB_INDEX = 4
     INDENTATION_DEPTH = 3
     COOLER_POWER_UPDATE_INTERVAL = 20  # Update displayed cooler power this often
+    MAIN_TITLE_FONT_SIZE_INCREMENT = 6
+    SUBTITLE_FONT_SIZE_INCREMENT = 3
 
     def __init__(self):
         """Initialize MainWindow class"""
@@ -66,6 +70,44 @@ class MainWindow(QMainWindow):
             last_size = settings.value("last_window_size")
             self.ui.resize(last_size)
 
+        # Experimentally override font size on a label.
+        # This is to avoid a detected problem with QT rich text labels.
+        # Rich Text is implemented with internal HTML and seems to be rendered
+        # incorrectly on some people's windows machines (font too large).  Trying
+        # this instead - plain text labels with the font manually overridden.
+
+        main_title_font = QFont()
+        main_title_font.setPointSize(main_title_font.pointSize()
+                                     + self.MAIN_TITLE_FONT_SIZE_INCREMENT)
+        main_title_font.setBold(True)
+        self.set_title_fonts(field_prefix="MainTitle_", font=main_title_font)
+
+        subtitle_font = QFont()
+        subtitle_font.setPointSize(subtitle_font.pointSize()
+                                   + self.SUBTITLE_FONT_SIZE_INCREMENT)
+        subtitle_font.setBold(True)
+        self.set_title_fonts(field_prefix="Subtitle_", font=subtitle_font)
+
+    # Scan (recursively) all the elements in the UI and set the font for
+    # any labels whose name begin with the given prefix
+    @tracelog
+    def set_title_fonts(self, field_prefix: str, font: QFont):
+        top_level_elements = self.ui.children()
+        self.traverse_and_set_font(top_level_elements, field_prefix, font)
+
+    @tracelog
+    def traverse_and_set_font(self, element_list: [QObject], field_prefix: str, font: QFont):
+        # Traverse the given list of top-level elements
+        for element in element_list:
+            if isinstance(element, QLabel):
+                label_name = element.objectName()
+                if label_name.startswith(field_prefix):
+                    element.setFont(font)
+            else:
+                # In case this element has children, do a recursive traversal of them
+                children = element.children()
+                if children is not None:
+                    self.traverse_and_set_font(children, field_prefix, font)
 
     def set_is_dirty(self, dirty: bool):
         """Record whether the open document has unsaved changes"""
