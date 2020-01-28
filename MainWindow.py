@@ -80,34 +80,17 @@ class MainWindow(QMainWindow):
         main_title_font.setPointSize(main_title_font.pointSize()
                                      + self.MAIN_TITLE_FONT_SIZE_INCREMENT)
         main_title_font.setBold(True)
-        self.set_title_fonts(field_prefix="MainTitle_", font=main_title_font)
+        MultiOsUtil.set_label_title_fonts(self.ui,
+                                          field_prefix="MainTitle_",
+                                          font=main_title_font)
 
         subtitle_font = QFont()
         subtitle_font.setPointSize(subtitle_font.pointSize()
                                    + self.SUBTITLE_FONT_SIZE_INCREMENT)
         subtitle_font.setBold(True)
-        self.set_title_fonts(field_prefix="Subtitle_", font=subtitle_font)
-
-    # Scan (recursively) all the elements in the UI and set the font for
-    # any labels whose name begin with the given prefix
-    @tracelog
-    def set_title_fonts(self, field_prefix: str, font: QFont):
-        top_level_elements = self.ui.children()
-        self.traverse_and_set_font(top_level_elements, field_prefix, font)
-
-    @tracelog
-    def traverse_and_set_font(self, element_list: [QObject], field_prefix: str, font: QFont):
-        # Traverse the given list of top-level elements
-        for element in element_list:
-            if isinstance(element, QLabel):
-                label_name = element.objectName()
-                if label_name.startswith(field_prefix):
-                    element.setFont(font)
-            else:
-                # In case this element has children, do a recursive traversal of them
-                children = element.children()
-                if children is not None:
-                    self.traverse_and_set_font(children, field_prefix, font)
+        MultiOsUtil.set_label_title_fonts(self.ui,
+                                          field_prefix="Subtitle_",
+                                          font=subtitle_font)
 
     def set_is_dirty(self, dirty: bool):
         """Record whether the open document has unsaved changes"""
