@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>718</width>
-    <height>507</height>
+    <height>483</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -20,13 +20,6 @@
    <string>Dialog</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
-   <item row="0" column="0" colspan="4">
-    <widget class="QLabel" name="label">
-     <property name="text">
-      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;&lt;span style=&quot; font-size:24pt;&quot;&gt;Bulk Entry of Frame Set Requirements&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-     </property>
-    </widget>
-   </item>
    <item row="1" column="0">
     <spacer name="verticalSpacer">
      <property name="orientation">
@@ -44,9 +37,9 @@
     </spacer>
    </item>
    <item row="2" column="0">
-    <widget class="QLabel" name="label_2">
+    <widget class="QLabel" name="Subtitle_1">
      <property name="text">
-      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:18pt;&quot;&gt;Bias Frames&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+      <string>Bias Frames</string>
      </property>
     </widget>
    </item>
@@ -128,9 +121,9 @@
     </layout>
    </item>
    <item row="4" column="0">
-    <widget class="QLabel" name="label_4">
+    <widget class="QLabel" name="Subtitle_2">
      <property name="text">
-      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:18pt;&quot;&gt;Dark Frames&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+      <string>Dark Frames</string>
      </property>
     </widget>
    </item>
@@ -270,6 +263,13 @@
      </property>
      <property name="text">
       <string>Cancel</string>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="0" colspan="5" alignment="Qt::AlignHCenter">
+    <widget class="QLabel" name="MainTitle_1">
+     <property name="text">
+      <string>Bulk Entry of Frame Set Requirements</string>
      </property>
     </widget>
    </item>

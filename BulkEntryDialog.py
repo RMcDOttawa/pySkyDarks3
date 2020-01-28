@@ -7,6 +7,8 @@
 #   _darkExposures      array of exposure values (float, seconds) for dark frames
 import re
 
+from PyQt5.QtGui import QFont
+
 from MultiOsUtil import MultiOsUtil
 from tracelog import *
 
@@ -17,6 +19,8 @@ from Validators import Validators
 
 
 class BulkEntryDialog(QDialog):
+    MAIN_TITLE_FONT_SIZE_INCREMENT = 6
+    SUBTITLE_FONT_SIZE_INCREMENT = 3
 
     def getNumBiasFrames(self) -> int:
         return self._numBiasFrames
@@ -67,6 +71,29 @@ class BulkEntryDialog(QDialog):
         self.ui.exposureLengths.textChanged.connect(self.exposure_lengths_changed)
 
         self.enable_buttons()
+
+        # Override font sizes on labels.
+        # This is to avoid a detected problem with QT rich text labels.
+        # Rich Text is implemented with internal HTML and seems to be rendered
+        # incorrectly on some people's windows machines (font too large).  So
+        # we use a naming convention and set the fonts on any labels whose names
+        # begin with "MainTitle_" or "Subtitle_"
+
+        main_title_font = QFont()
+        main_title_font.setPointSize(main_title_font.pointSize()
+                                     + self.MAIN_TITLE_FONT_SIZE_INCREMENT)
+        main_title_font.setBold(True)
+        MultiOsUtil.set_label_title_fonts(self.ui,
+                                          field_prefix="MainTitle_",
+                                          font=main_title_font)
+
+        subtitle_font = QFont()
+        subtitle_font.setPointSize(subtitle_font.pointSize()
+                                   + self.SUBTITLE_FONT_SIZE_INCREMENT)
+        subtitle_font.setBold(True)
+        MultiOsUtil.set_label_title_fonts(self.ui,
+                                          field_prefix="Subtitle_",
+                                          font=subtitle_font)
         # print("BulkEntryDialog/init exits")
 
     # Set Bias binnings array from the checkboxes selected
