@@ -5,10 +5,10 @@ from typing import List
 
 from MultiOsUtil import MultiOsUtil
 from tracelog import *
-from PyQt5 import uic, QtWidgets
+from PyQt5 import uic, QtWidgets, QtGui
 from PyQt5.QtCore import QMutex, QItemSelection, QModelIndex, QItemSelectionModel, QTime, QThread, QTimer, \
-    QSettings, QDate
-from PyQt5.QtWidgets import QMainWindow, QDialog, QMessageBox, QHeaderView, QFileDialog
+    QSettings, QDate, QEvent, QObject
+from PyQt5.QtWidgets import QMainWindow, QDialog, QMessageBox, QHeaderView, QFileDialog, QWidget
 
 from AddFrameSetDialog import AddFrameSetDialog
 from BulkEntryDialog import BulkEntryDialog
@@ -38,6 +38,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         """Initialize MainWindow class"""
         QMainWindow.__init__(self)
+        self.installEventFilter(self)
         self.ui = uic.loadUi(MultiOsUtil.path_for_file_in_program_directory("MainWindow.ui"))
         self._controls_connected = False
         self._file_path = ""
@@ -59,6 +60,13 @@ class MainWindow(QMainWindow):
         # Always display the first tab on opening
         self.ui.mainTabView.setCurrentIndex(0)
 
+        # If we have a saved window size in the preferences, set the size to that
+        settings = QSettings()
+        if settings.contains("last_window_size"):
+            last_size = settings.value("last_window_size")
+            self.ui.resize(last_size)
+
+
     def set_is_dirty(self, dirty: bool):
         """Record whether the open document has unsaved changes"""
         self._is_dirty = dirty
@@ -71,6 +79,7 @@ class MainWindow(QMainWindow):
     def accept_data_model(self, the_model: DataModel):
         """Take a data model, remember it, and use it to initialize fields"""
         self.model: DataModel = the_model
+        self.ui.installEventFilter(self)
 
         # Location information
         self.ui.locName.setText(the_model.get_location_name())
@@ -1283,7 +1292,7 @@ class MainWindow(QMainWindow):
         self._mutex.unlock()
 
     # self._worker_object.startProgressBar.connect(self.start_session_progress_bar)
-    #tracelog
+    # tracelog
     def start_session_progress_bar(self, bar_maximum: int):
         """Receive signal to turn on and start the progress bar"""
         # print(f"start_session_progress_bar({bar_maximum})")
@@ -1293,7 +1302,7 @@ class MainWindow(QMainWindow):
         self._mutex.unlock()
 
     # self._worker_object.updateProgressBar.connect(self.update_session_progress_bar)
-    #tracelog
+    # tracelog
     def update_session_progress_bar(self, new_value: int):
         """Receive signal to update the progress bar"""
         # print(f"update_session_progress_bar({new_value})")
@@ -1564,3 +1573,14 @@ class MainWindow(QMainWindow):
         self._mutex.lock()
         self.ui.cameraPath.setText(autosave_path)
         self._mutex.unlock()
+
+    # Catch window resizing so we can record the changed size
+
+    def eventFilter(self, object: QObject, event: QEvent) -> bool:
+        if event.type() == QEvent.Resize:
+            window_size = event.size()
+            # height = event.size().height()
+            # width = event.size().width()
+            settings = QSettings()
+            settings.setValue("last_window_size", window_size)
+        return False  # Didn't handle event

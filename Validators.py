@@ -1,5 +1,6 @@
 from tracelog import *
 
+
 class Validators:
     # Validate floating point number such as latitude, longitude
     @classmethod
