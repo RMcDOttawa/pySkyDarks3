@@ -70,11 +70,12 @@ class MainWindow(QMainWindow):
             last_size = settings.value("last_window_size")
             self.ui.resize(last_size)
 
-        # Experimentally override font size on a label.
+        # Override font sizes on labels.
         # This is to avoid a detected problem with QT rich text labels.
         # Rich Text is implemented with internal HTML and seems to be rendered
-        # incorrectly on some people's windows machines (font too large).  Trying
-        # this instead - plain text labels with the font manually overridden.
+        # incorrectly on some people's windows machines (font too large).  So
+        # we use a naming convention and set the fonts on any labels whose names
+        # begin with "MainTitle_" or "Subtitle_"
 
         main_title_font = QFont()
         main_title_font.setPointSize(main_title_font.pointSize()
