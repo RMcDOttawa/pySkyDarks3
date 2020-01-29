@@ -1,6 +1,8 @@
-from PyQt5.QtCore import QAbstractTableModel, QModelIndex, QVariant, Qt
+from PyQt5.QtCore import QAbstractTableModel, QModelIndex, QVariant, Qt, QSettings
+from PyQt5.QtGui import QFont
 
 from FrameSet import FrameSet
+from MultiOsUtil import MultiOsUtil
 from tracelog import *
 
 class FrameSetSessionTableModel(QAbstractTableModel):
@@ -29,6 +31,12 @@ class FrameSetSessionTableModel(QAbstractTableModel):
             assert ((row_num >= 0) & (row_num < len(self._framesets_list)))
             the_frame_set: FrameSet = self._framesets_list[row_num]
             result: QVariant = QVariant(the_frame_set.fieldNumberAsString(column_num))
+        elif role == Qt.FontRole:
+            settings = QSettings()
+            standard_font_size = settings.value(MultiOsUtil.STANDARD_FONT_SIZE_SETTING)
+            font = QFont()
+            font.setPointSize(standard_font_size)
+            result = font
         else:
             result = QVariant()
         return result
@@ -37,9 +45,17 @@ class FrameSetSessionTableModel(QAbstractTableModel):
     def headerData(self, column_number, orientation, role):
         # print(f"headerData({column_number}, {orientation}, {role}) STUB")
         result = QVariant()
-        if (role == Qt.DisplayRole) & (orientation == Qt.Horizontal):
-            assert ((column_number >= 0) & (column_number < len(self._columnHeaders)))
-            result = self._columnHeaders[column_number]
+        if orientation == Qt.Horizontal:
+            if role == Qt.DisplayRole:
+                assert ((column_number >= 0) & (column_number < len(self._columnHeaders)))
+                result = self._columnHeaders[column_number]
+            elif role == Qt.FontRole:
+                settings = QSettings()
+                standard_font_size = settings.value(MultiOsUtil.STANDARD_FONT_SIZE_SETTING)
+                font = QFont()
+                font.setPointSize(standard_font_size)
+                font.setBold(True)
+                result = font
         return result
 
     # Received notice that one of the stored frame sets has changed (at time of writing,

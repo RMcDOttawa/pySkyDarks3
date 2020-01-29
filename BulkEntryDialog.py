@@ -1,4 +1,3 @@
-
 #   The following method variables are accessible via getters.  No setters - no external setting.
 #   _numBiasFrames      number of bias frames for each of the following binnings
 #   _biasBinnings       array of binning values for bias frames.  empty if none
@@ -7,6 +6,7 @@
 #   _darkExposures      array of exposure values (float, seconds) for dark frames
 import re
 
+from PyQt5.QtCore import QObject, QEvent, QSettings
 from PyQt5.QtGui import QFont
 
 from MultiOsUtil import MultiOsUtil
@@ -19,8 +19,6 @@ from Validators import Validators
 
 
 class BulkEntryDialog(QDialog):
-    MAIN_TITLE_FONT_SIZE_INCREMENT = 6
-    SUBTITLE_FONT_SIZE_INCREMENT = 3
 
     def getNumBiasFrames(self) -> int:
         return self._numBiasFrames
@@ -42,13 +40,24 @@ class BulkEntryDialog(QDialog):
         QDialog.__init__(self)
         self.ui = uic.loadUi(MultiOsUtil.path_for_file_in_program_directory("BulkEntry.ui"))
 
+        # Set window font sizes according to saved preference
+        settings = QSettings()
+        standard_font_size = settings.value(MultiOsUtil.STANDARD_FONT_SIZE_SETTING)
+        MultiOsUtil.set_font_sizes(parent=self.ui,
+                                   standard_size=standard_font_size,
+                                   title_prefix=MultiOsUtil.MAIN_TITLE_LABEL_PREFIX,
+                                   title_increment=MultiOsUtil.MAIN_TITLE_FONT_SIZE_INCREMENT,
+                                   subtitle_prefix=MultiOsUtil.SUBTITLE_LABEL_PREFIX,
+                                   subtitle_increment=MultiOsUtil.SUBTITLE_FONT_SIZE_INCREMENT
+                                   )
+
         self._numBiasFrames: int = 0
         self._numDarkFrames: int = 0
         self._darkExposures: [float] = []
         self._biasBinnings: [int] = []
         self._darkBinnings: [int] = []
 
-        self.set_bias_binnings()   # Store from initially-set checkboxes
+        self.set_bias_binnings()  # Store from initially-set checkboxes
         self.set_dark_binnings()
 
         # Set up button responders
@@ -72,29 +81,16 @@ class BulkEntryDialog(QDialog):
 
         self.enable_buttons()
 
-        # Override font sizes on labels.
-        # This is to avoid a detected problem with QT rich text labels.
-        # Rich Text is implemented with internal HTML and seems to be rendered
-        # incorrectly on some people's windows machines (font too large).  So
-        # we use a naming convention and set the fonts on any labels whose names
-        # begin with "MainTitle_" or "Subtitle_"
+    # print("BulkEntryDialog/init exits")
 
-        main_title_font = QFont()
-        main_title_font.setPointSize(main_title_font.pointSize()
-                                     + self.MAIN_TITLE_FONT_SIZE_INCREMENT)
-        main_title_font.setBold(True)
-        MultiOsUtil.set_label_title_fonts(self.ui,
-                                          field_prefix="MainTitle_",
-                                          font=main_title_font)
+    def set_up_ui(self):
+        # Set size from last resize, if any
+        settings = QSettings()
+        if settings.contains(MultiOsUtil.LAST_BULKADD_SIZE_SETTING):
+            last_size = settings.value(MultiOsUtil.LAST_BULKADD_SIZE_SETTING)
+            self.ui.resize(last_size)
 
-        subtitle_font = QFont()
-        subtitle_font.setPointSize(subtitle_font.pointSize()
-                                   + self.SUBTITLE_FONT_SIZE_INCREMENT)
-        subtitle_font.setBold(True)
-        MultiOsUtil.set_label_title_fonts(self.ui,
-                                          field_prefix="Subtitle_",
-                                          font=subtitle_font)
-        # print("BulkEntryDialog/init exits")
+        self.ui.installEventFilter(self)
 
     # Set Bias binnings array from the checkboxes selected
     @tracelog
@@ -131,7 +127,7 @@ class BulkEntryDialog(QDialog):
     def enable_buttons(self):
         """Enable or disable certain dialog controls according to context"""
         # print("enableButtons")
-        enabled: bool = (self._numBiasFrames > 0 and len(self._biasBinnings) > 0)\
+        enabled: bool = (self._numBiasFrames > 0 and len(self._biasBinnings) > 0) \
                         or (self._numDarkFrames > 0 and len(self._darkBinnings) > 0
                             and len(self._darkExposures) > 0)
         self.ui.saveButton.setEnabled(enabled)
@@ -217,3 +213,13 @@ class BulkEntryDialog(QDialog):
         """CLose the dialog with a cancellation signal"""
         # print("cancelButtonClicked")
         self.ui.reject()
+
+    # Look at all events happening in this window.  If event is a resize, remember the
+    # size in the settings
+
+    def eventFilter(self, the_object: QObject, event: QEvent) -> bool:
+        if event.type() == QEvent.Resize:
+            window_size = event.size()
+            settings = QSettings()
+            settings.setValue(MultiOsUtil.LAST_BULKADD_SIZE_SETTING, window_size)
+        return False  # Didn't handle event

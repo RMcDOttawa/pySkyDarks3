@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>718</width>
-    <height>483</height>
+    <height>459</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -63,6 +63,9 @@
        <height>16777215</height>
       </size>
      </property>
+     <property name="toolTip">
+      <string>How many bias frames, of each of the following binnings, should be taken?</string>
+     </property>
      <property name="maxLength">
       <number>5</number>
      </property>
@@ -86,6 +89,9 @@
     <layout class="QVBoxLayout" name="verticalLayout">
      <item>
       <widget class="QCheckBox" name="biasBin11">
+       <property name="toolTip">
+        <string>Take bias frames binned 1 x 1</string>
+       </property>
        <property name="text">
         <string>1 x 1</string>
        </property>
@@ -96,6 +102,9 @@
      </item>
      <item>
       <widget class="QCheckBox" name="biasBin22">
+       <property name="toolTip">
+        <string>Take bias frames binned 2 x 2</string>
+       </property>
        <property name="text">
         <string>2 x 2</string>
        </property>
@@ -106,6 +115,9 @@
      </item>
      <item>
       <widget class="QCheckBox" name="biasBin33">
+       <property name="toolTip">
+        <string>Take bias frames binned 3 x 3</string>
+       </property>
        <property name="text">
         <string>3 x 3</string>
        </property>
@@ -113,6 +125,9 @@
      </item>
      <item>
       <widget class="QCheckBox" name="biasBin44">
+       <property name="toolTip">
+        <string>Take bias frames binned 4 x 4</string>
+       </property>
        <property name="text">
         <string>4 x 4</string>
        </property>
@@ -147,6 +162,9 @@
        <height>16777215</height>
       </size>
      </property>
+     <property name="toolTip">
+      <string>How many dark frames of the combination of the following binnings and exposure times, should be taken?</string>
+     </property>
      <property name="maxLength">
       <number>5</number>
      </property>
@@ -170,6 +188,9 @@
     <layout class="QVBoxLayout" name="verticalLayout_2">
      <item>
       <widget class="QCheckBox" name="darkBin11">
+       <property name="toolTip">
+        <string>Take dark frames binned 1 x 1</string>
+       </property>
        <property name="text">
         <string>1 x 1</string>
        </property>
@@ -180,6 +201,9 @@
      </item>
      <item>
       <widget class="QCheckBox" name="darkBin22">
+       <property name="toolTip">
+        <string>Take dark frames binned 2 x 2</string>
+       </property>
        <property name="text">
         <string>2 x 2</string>
        </property>
@@ -190,6 +214,9 @@
      </item>
      <item>
       <widget class="QCheckBox" name="darkBin33">
+       <property name="toolTip">
+        <string>Take dark frames binned 3 x 3</string>
+       </property>
        <property name="text">
         <string>3 x 3</string>
        </property>
@@ -197,6 +224,9 @@
      </item>
      <item>
       <widget class="QCheckBox" name="darkBin44">
+       <property name="toolTip">
+        <string>Take dark frames binned 4 x 4</string>
+       </property>
        <property name="text">
         <string>4 x 4</string>
        </property>
@@ -215,8 +245,14 @@
         <height>61</height>
        </rect>
       </property>
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
       <property name="text">
-       <string>Exposure lengths, in seconds, separated by blanks or commas:</string>
+       <string>Exposure lengths, in seconds:</string>
       </property>
       <property name="wordWrap">
        <bool>true</bool>
@@ -225,7 +261,11 @@
     </widget>
    </item>
    <item row="6" column="2" colspan="3">
-    <widget class="QTextEdit" name="exposureLengths"/>
+    <widget class="QTextEdit" name="exposureLengths">
+     <property name="toolTip">
+      <string>Enter one or more exposure lenghts, in seconds, separated by spaces or commas</string>
+     </property>
+    </widget>
    </item>
    <item row="7" column="0">
     <widget class="QPushButton" name="saveButton">
@@ -234,6 +274,9 @@
        <horstretch>0</horstretch>
        <verstretch>0</verstretch>
       </sizepolicy>
+     </property>
+     <property name="toolTip">
+      <string>Save the frames described here back to the frames plan.</string>
      </property>
      <property name="text">
       <string>Save</string>
@@ -260,6 +303,9 @@
        <horstretch>0</horstretch>
        <verstretch>0</verstretch>
       </sizepolicy>
+     </property>
+     <property name="toolTip">
+      <string>Exit without generating any new frames.</string>
      </property>
      <property name="text">
       <string>Cancel</string>

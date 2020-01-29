@@ -10,7 +10,8 @@ from tracelog import *
 from PyQt5 import uic, QtWidgets, QtGui
 from PyQt5.QtCore import QMutex, QItemSelection, QModelIndex, QItemSelectionModel, QTime, QThread, QTimer, \
     QSettings, QDate, QEvent, QObject
-from PyQt5.QtWidgets import QMainWindow, QDialog, QMessageBox, QHeaderView, QFileDialog, QWidget, QLabel
+from PyQt5.QtWidgets import QMainWindow, QDialog, QMessageBox, QHeaderView, QFileDialog, QWidget, QLabel, QCheckBox, \
+    QRadioButton, QLineEdit, QPushButton, QDateEdit, QTimeEdit, QListWidgetItem
 
 from AddFrameSetDialog import AddFrameSetDialog
 from BulkEntryDialog import BulkEntryDialog
@@ -36,8 +37,6 @@ class MainWindow(QMainWindow):
     RUN_SESSION_TAB_INDEX = 4
     INDENTATION_DEPTH = 3
     COOLER_POWER_UPDATE_INTERVAL = 20  # Update displayed cooler power this often
-    MAIN_TITLE_FONT_SIZE_INCREMENT = 6
-    SUBTITLE_FONT_SIZE_INCREMENT = 3
 
     def __init__(self):
         """Initialize MainWindow class"""
@@ -66,32 +65,28 @@ class MainWindow(QMainWindow):
 
         # If we have a saved window size in the preferences, set the size to that
         settings = QSettings()
-        if settings.contains("last_window_size"):
-            last_size = settings.value("last_window_size")
+        if settings.contains(MultiOsUtil.LAST_WINDOW_SIZE_SETTING):
+            last_size = settings.value(MultiOsUtil.LAST_WINDOW_SIZE_SETTING)
             self.ui.resize(last_size)
 
-        # Override font sizes on labels.
-        # This is to avoid a detected problem with QT rich text labels.
-        # Rich Text is implemented with internal HTML and seems to be rendered
-        # incorrectly on some people's windows machines (font too large).  So
-        # we use a naming convention and set the fonts on any labels whose names
-        # begin with "MainTitle_" or "Subtitle_"
+        # Ensure there is a standard window font size established
+        if not settings.contains(MultiOsUtil.STANDARD_FONT_SIZE_SETTING):
+            settings.setValue(MultiOsUtil.STANDARD_FONT_SIZE_SETTING,
+                              MultiOsUtil.STANDARD_FONT_SIZE)
 
-        main_title_font = QFont()
-        main_title_font.setPointSize(main_title_font.pointSize()
-                                     + self.MAIN_TITLE_FONT_SIZE_INCREMENT)
-        main_title_font.setBold(True)
-        MultiOsUtil.set_label_title_fonts(self.ui,
-                                          field_prefix="MainTitle_",
-                                          font=main_title_font)
+        # Frame plan table headers and console table headers should auto-resize if font size changes
+        self.ui.framesPlanTable.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
+        self.ui.sessionTable.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
 
-        subtitle_font = QFont()
-        subtitle_font.setPointSize(subtitle_font.pointSize()
-                                   + self.SUBTITLE_FONT_SIZE_INCREMENT)
-        subtitle_font.setBold(True)
-        MultiOsUtil.set_label_title_fonts(self.ui,
-                                          field_prefix="Subtitle_",
-                                          font=subtitle_font)
+        # Set font sizes of all fontable elements to the saved font size
+        standard_font_size = settings.value(MultiOsUtil.STANDARD_FONT_SIZE_SETTING)
+        MultiOsUtil.set_font_sizes(parent=self.ui,
+                                   standard_size=standard_font_size,
+                                   title_prefix=MultiOsUtil.MAIN_TITLE_LABEL_PREFIX,
+                                   title_increment=MultiOsUtil.MAIN_TITLE_FONT_SIZE_INCREMENT,
+                                   subtitle_prefix=MultiOsUtil.SUBTITLE_LABEL_PREFIX,
+                                   subtitle_increment=MultiOsUtil.SUBTITLE_FONT_SIZE_INCREMENT
+                                   )
 
     def set_is_dirty(self, dirty: bool):
         """Record whether the open document has unsaved changes"""
@@ -329,6 +324,9 @@ class MainWindow(QMainWindow):
             self.ui.menuClose.triggered.connect(self.close_menu_triggered)
             self.ui.menuNew.triggered.connect(self.new_menu_triggered)
             self.ui.menuOpen.triggered.connect(self.open_menu_triggered)
+            self.ui.actionFontLarger.triggered.connect(self.font_size_larger)
+            self.ui.actionFontSmaller.triggered.connect(self.font_size_smaller)
+            self.ui.actionFontReset.triggered.connect(self.font_size_reset)
 
             # Tab view
             # See when tabs are changed so we can do special init as needed
@@ -1016,6 +1014,7 @@ class MainWindow(QMainWindow):
         """Respond to 'bulk add' button by opening dialog to specify multiple frames"""
         rows_selected = self.frame_plan_selected_rows()
         dialog: BulkEntryDialog = BulkEntryDialog()
+        dialog.set_up_ui()
         result: QDialog.DialogCode = dialog.ui.exec_()
         if result == QDialog.Accepted:
             framesets_to_add: [FrameSet] = self.model.generate_frame_sets(dialog.getNumBiasFrames(),
@@ -1292,9 +1291,19 @@ class MainWindow(QMainWindow):
         if level > 1:
             indentation_block = " " * MainWindow.INDENTATION_DEPTH
             indent_string = indentation_block * (level - 1)
-        self.ui.consoleList.addItem(time_formatted + " " + indent_string + message)
-        item_just_added = self.ui.consoleList.item(self.ui.consoleList.count() - 1)
-        self.ui.consoleList.scrollToItem(item_just_added)
+
+        # Create the text line to go in the console
+        list_item: QListWidgetItem = QListWidgetItem(time_formatted + " " + indent_string + message)
+
+        # Set its font size according to the settings
+        item_font: QFont = list_item.font()
+        settings = QSettings()
+        item_font.setPointSize(settings.value(MultiOsUtil.STANDARD_FONT_SIZE_SETTING))
+        list_item.setFont(item_font)
+
+        # Add to bottom of console and scroll to it
+        self.ui.consoleList.addItem(list_item)
+        self.ui.consoleList.scrollToItem(list_item)
         self._mutex.unlock()
 
     @tracelog
@@ -1608,5 +1617,38 @@ class MainWindow(QMainWindow):
             # height = event.size().height()
             # width = event.size().width()
             settings = QSettings()
-            settings.setValue("last_window_size", window_size)
+            settings.setValue(MultiOsUtil.LAST_WINDOW_SIZE_SETTING, window_size)
         return False  # Didn't handle event
+
+    # Menu to enlarge font size (by one point) in the window
+    @tracelog
+    def font_size_larger(self, _):
+        self.increment_font_size(self.ui, increment=+1)
+
+    # Menu to reduce font size (by one point) in the window
+    @tracelog
+    def font_size_smaller(self, _):
+        self.increment_font_size(self.ui, increment=-1)
+
+    @tracelog
+    def increment_font_size(self, parent: QObject, increment: int):
+        settings = QSettings()
+        old_standard_font_size = settings.value(MultiOsUtil.STANDARD_FONT_SIZE_SETTING)
+        new_standard_font_size = old_standard_font_size + increment
+        settings.setValue(MultiOsUtil.STANDARD_FONT_SIZE_SETTING, new_standard_font_size)
+        MultiOsUtil.set_font_sizes(parent=parent,
+                                   standard_size = new_standard_font_size,
+                                   title_prefix = MultiOsUtil.MAIN_TITLE_LABEL_PREFIX,
+                                   title_increment=MultiOsUtil.MAIN_TITLE_FONT_SIZE_INCREMENT,
+                                   subtitle_prefix=MultiOsUtil.SUBTITLE_LABEL_PREFIX,
+                                   subtitle_increment=MultiOsUtil.SUBTITLE_FONT_SIZE_INCREMENT)
+
+    def font_size_reset(self):
+        settings = QSettings()
+        settings.setValue(MultiOsUtil.STANDARD_FONT_SIZE_SETTING, MultiOsUtil.STANDARD_FONT_SIZE)
+        MultiOsUtil.set_font_sizes(parent=self.ui,
+                                   standard_size=MultiOsUtil.STANDARD_FONT_SIZE,
+                                   title_prefix=MultiOsUtil.MAIN_TITLE_LABEL_PREFIX,
+                                   title_increment=MultiOsUtil.MAIN_TITLE_FONT_SIZE_INCREMENT,
+                                   subtitle_prefix=MultiOsUtil.SUBTITLE_LABEL_PREFIX,
+                                   subtitle_increment=MultiOsUtil.SUBTITLE_FONT_SIZE_INCREMENT)

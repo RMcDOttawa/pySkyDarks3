@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>800</width>
-    <height>552</height>
+    <width>794</width>
+    <height>581</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -18,8 +18,8 @@
   </property>
   <property name="minimumSize">
    <size>
-    <width>600</width>
-    <height>450</height>
+    <width>794</width>
+    <height>581</height>
    </size>
   </property>
   <property name="maximumSize">
@@ -42,7 +42,7 @@
        <string/>
       </property>
       <property name="currentIndex">
-       <number>1</number>
+       <number>3</number>
       </property>
       <widget class="QWidget" name="startEndTab">
        <attribute name="title">
@@ -152,6 +152,18 @@
             </item>
             <item>
              <widget class="QTimeEdit" name="startTimeEdit">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="minimumSize">
+               <size>
+                <width>113</width>
+                <height>21</height>
+               </size>
+              </property>
               <property name="toolTip">
                <string>Time to start if &quot;Time:&quot; chosen</string>
               </property>
@@ -215,6 +227,18 @@
             </item>
             <item>
              <widget class="QDateEdit" name="startDateEdit">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="minimumSize">
+               <size>
+                <width>92</width>
+                <height>21</height>
+               </size>
+              </property>
               <property name="toolTip">
                <string>Date to start run, if set to &quot;Date:&quot;</string>
               </property>
@@ -318,6 +342,18 @@
             </item>
             <item>
              <widget class="QTimeEdit" name="endTimeEdit">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="minimumSize">
+               <size>
+                <width>92</width>
+                <height>21</height>
+               </size>
+              </property>
               <property name="toolTip">
                <string>Time to end session if &quot;Time:&quot; option selected</string>
               </property>
@@ -358,6 +394,18 @@
             </item>
             <item>
              <widget class="QDateEdit" name="endDateEdit">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="minimumSize">
+               <size>
+                <width>92</width>
+                <height>21</height>
+               </size>
+              </property>
               <property name="toolTip">
                <string>The date to end session, if &quot;Date:&quot; option chosen</string>
               </property>
@@ -595,6 +643,12 @@
             </item>
             <item>
              <widget class="QLineEdit" name="warmCCDSeconds">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
               <property name="toolTip">
                <string>Number of seconds to allow CCD to warm up before disconnecting</string>
               </property>
@@ -1277,10 +1331,22 @@
           <property name="cornerButtonEnabled">
            <bool>false</bool>
           </property>
+          <attribute name="horizontalHeaderCascadingSectionResizes">
+           <bool>true</bool>
+          </attribute>
+          <attribute name="horizontalHeaderMinimumSectionSize">
+           <number>24</number>
+          </attribute>
+          <attribute name="horizontalHeaderDefaultSectionSize">
+           <number>300</number>
+          </attribute>
           <attribute name="verticalHeaderVisible">
            <bool>false</bool>
           </attribute>
           <attribute name="verticalHeaderHighlightSections">
+           <bool>false</bool>
+          </attribute>
+          <attribute name="verticalHeaderStretchLastSection">
            <bool>false</bool>
           </attribute>
          </widget>
@@ -1571,7 +1637,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>800</width>
+     <width>794</width>
      <height>22</height>
     </rect>
    </property>
@@ -1590,7 +1656,16 @@
     <addaction name="separator"/>
     <addaction name="menuClose"/>
    </widget>
+   <widget class="QMenu" name="menuFont">
+    <property name="title">
+     <string>Font</string>
+    </property>
+    <addaction name="actionFontLarger"/>
+    <addaction name="actionFontSmaller"/>
+    <addaction name="actionFontReset"/>
+   </widget>
    <addaction name="menuFile"/>
+   <addaction name="menuFont"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <action name="menuSaveAs">
@@ -1631,6 +1706,30 @@
    </property>
    <property name="shortcut">
     <string>Ctrl+O</string>
+   </property>
+  </action>
+  <action name="actionFontLarger">
+   <property name="text">
+    <string>Larger</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+=</string>
+   </property>
+  </action>
+  <action name="actionFontSmaller">
+   <property name="text">
+    <string>Smaller</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+-</string>
+   </property>
+  </action>
+  <action name="actionFontReset">
+   <property name="text">
+    <string>Reset</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+/</string>
    </property>
   </action>
  </widget>

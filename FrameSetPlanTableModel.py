@@ -1,12 +1,14 @@
-from PyQt5.QtCore import QAbstractTableModel, QModelIndex, QVariant, Qt
+from PyQt5.QtCore import QAbstractTableModel, QModelIndex, QVariant, Qt, QSettings
+from PyQt5.QtGui import QFont
 
 from FrameSet import FrameSet
+from MultiOsUtil import MultiOsUtil
 from tracelog import *
 
 
 class FrameSetPlanTableModel (QAbstractTableModel):
 
-    _columnHeaders = ("# Frames", "Type", "Exposure", "Binning", "Complete")
+    _columnHeaders = (" # Frames ", " Type ", " Exposure ", " Binning ", " Complete ")
 
     # Constructor takes and keeps a pointer to the data model
     def __init__(self, the_data_model):
@@ -32,6 +34,12 @@ class FrameSetPlanTableModel (QAbstractTableModel):
             assert((row_num >= 0) & (row_num < len(self._dataModel.get_saved_frame_sets())))
             the_frame_set: FrameSet = self._dataModel.get_frame_set(row_num)
             result: QVariant = QVariant(the_frame_set.fieldNumberAsString(column_num))
+        elif role == Qt.FontRole:
+            settings = QSettings()
+            standard_font_size = settings.value(MultiOsUtil.STANDARD_FONT_SIZE_SETTING)
+            font = QFont()
+            font.setPointSize(standard_font_size)
+            result = font
         else:
             result = QVariant()
         return result
@@ -40,9 +48,17 @@ class FrameSetPlanTableModel (QAbstractTableModel):
     def headerData(self, column_number, orientation, role):
         # print(f"headerData({column_number}, {orientation}, {role})")
         result = QVariant()
-        if (role == Qt.DisplayRole) and (orientation == Qt.Horizontal):
-            assert((column_number >= 0) & (column_number < len(self._columnHeaders)))
-            result = self._columnHeaders[column_number]
+        if orientation == Qt.Horizontal:
+            if role == Qt.DisplayRole:
+                assert((column_number >= 0) & (column_number < len(self._columnHeaders)))
+                result = self._columnHeaders[column_number]
+            elif role == Qt.FontRole:
+                settings = QSettings()
+                standard_font_size = settings.value(MultiOsUtil.STANDARD_FONT_SIZE_SETTING)
+                font = QFont()
+                font.setPointSize(standard_font_size)
+                font.setBold(True)
+                result = font
         return result
 
     # Add a frameset to the end of the list in this model

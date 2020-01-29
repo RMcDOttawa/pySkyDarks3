@@ -1,4 +1,5 @@
 from PyQt5 import uic
+from PyQt5.QtCore import QSettings, QObject, QEvent
 from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import QDialog
 
@@ -13,42 +14,30 @@ from Validators import Validators
 
 class AddFrameSetDialog(QDialog):
 
-    MAIN_TITLE_FONT_SIZE_INCREMENT = 6
-    SUBTITLE_FONT_SIZE_INCREMENT = 3
-
     def __init__(self):
         """Initialize class object on creation"""
         # print("AddFrameSetDialog/init entered")
         QDialog.__init__(self)
+        # Watch window events so we can catch and record resize events
+
         self.ui = uic.loadUi(MultiOsUtil.path_for_file_in_program_directory("AddFrameSet.ui"))
         self._numFramesValid = False   # Set as part of field validation
         self._exposureValid = False
         self._completedValid = False
         self._frameSet: FrameSet
 
-        # Override font sizes on labels.
-        # This is to avoid a detected problem with QT rich text labels.
-        # Rich Text is implemented with internal HTML and seems to be rendered
-        # incorrectly on some people's windows machines (font too large).  So
-        # we use a naming convention and set the fonts on any labels whose names
-        # begin with "MainTitle_" or "Subtitle_"
+        # Set window font sizes according to saved preference
+        settings = QSettings()
+        standard_font_size = settings.value(MultiOsUtil.STANDARD_FONT_SIZE_SETTING)
+        MultiOsUtil.set_font_sizes(parent=self.ui,
+                                   standard_size=standard_font_size,
+                                   title_prefix=MultiOsUtil.MAIN_TITLE_LABEL_PREFIX,
+                                   title_increment=MultiOsUtil.MAIN_TITLE_FONT_SIZE_INCREMENT,
+                                   subtitle_prefix=MultiOsUtil.SUBTITLE_LABEL_PREFIX,
+                                   subtitle_increment=MultiOsUtil.SUBTITLE_FONT_SIZE_INCREMENT
+                                   )
 
-        main_title_font = QFont()
-        main_title_font.setPointSize(main_title_font.pointSize()
-                                     + self.MAIN_TITLE_FONT_SIZE_INCREMENT)
-        main_title_font.setBold(True)
-        MultiOsUtil.set_label_title_fonts(self.ui,
-                                          field_prefix="MainTitle_",
-                                          font=main_title_font)
-
-        subtitle_font = QFont()
-        subtitle_font.setPointSize(subtitle_font.pointSize()
-                                   + self.SUBTITLE_FONT_SIZE_INCREMENT)
-        subtitle_font.setBold(True)
-        MultiOsUtil.set_label_title_fonts(self.ui,
-                                          field_prefix="Subtitle_",
-                                          font=subtitle_font)
-        # print("AddFrameSetDialog/init exits")
+         # print("AddFrameSetDialog/init exits")
 
     @tracelog
     def getFrameSet(self) -> FrameSet:  # Will be DarkFrameSet or BiasFrameSet
@@ -58,6 +47,14 @@ class AddFrameSetDialog(QDialog):
     @tracelog
     def setupUI(self, new_set: bool, frame_set=None):
         """Initialize UI fields in the dialog"""
+        # Set size from last resize, if any
+        settings = QSettings()
+        if settings.contains(MultiOsUtil.LAST_ADDFRAME_SIZE_SETTING):
+            last_size = settings.value(MultiOsUtil.LAST_ADDFRAME_SIZE_SETTING)
+            self.ui.resize(last_size)
+
+        # Catch events so we can see resizing
+        self.ui.installEventFilter(self)
 
         # Remember the frame set that was used to set up this window.
         # If we're creating a new one, this will be None, and will result in
@@ -224,3 +221,13 @@ class AddFrameSetDialog(QDialog):
         # print("cancelButtonClicked")
         # Restore the incoming frameset from the saved values
         self.ui.reject()
+
+    # Look at all events happening in this window.  If event is a resize, remember the
+    # size in the settings
+
+    def eventFilter(self, object: QObject, event: QEvent) -> bool:
+        if event.type() == QEvent.Resize:
+            window_size = event.size()
+            settings = QSettings()
+            settings.setValue(MultiOsUtil.LAST_ADDFRAME_SIZE_SETTING, window_size)
+        return False  # Didn't handle event
