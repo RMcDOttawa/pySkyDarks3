@@ -88,6 +88,14 @@ class MainWindow(QMainWindow):
                                    subtitle_increment=MultiOsUtil.SUBTITLE_FONT_SIZE_INCREMENT
                                    )
 
+        # "Log everything" checkbox is set from preferences, defaults to "off"
+        if settings.contains(TRACE_LOG_SETTING):
+            trace_enabled = settings.value(TRACE_LOG_SETTING)
+        else:
+            settings.setValue(TRACE_LOG_SETTING, False)
+            trace_enabled = False
+        self.ui.writeTraceInfo.setChecked(trace_enabled)
+
     def set_is_dirty(self, dirty: bool):
         """Record whether the open document has unsaved changes"""
         self._is_dirty = dirty
@@ -327,6 +335,9 @@ class MainWindow(QMainWindow):
             self.ui.actionFontLarger.triggered.connect(self.font_size_larger)
             self.ui.actionFontSmaller.triggered.connect(self.font_size_smaller)
             self.ui.actionFontReset.triggered.connect(self.font_size_reset)
+
+            # Checkbox for tracing
+            self.ui.writeTraceInfo.clicked.connect(self.write_trace_info_clicked)
 
             # Tab view
             # See when tabs are changed so we can do special init as needed
@@ -1643,6 +1654,7 @@ class MainWindow(QMainWindow):
                                    subtitle_prefix=MultiOsUtil.SUBTITLE_LABEL_PREFIX,
                                    subtitle_increment=MultiOsUtil.SUBTITLE_FONT_SIZE_INCREMENT)
 
+    @tracelog
     def font_size_reset(self):
         settings = QSettings()
         settings.setValue(MultiOsUtil.STANDARD_FONT_SIZE_SETTING, MultiOsUtil.STANDARD_FONT_SIZE)
@@ -1652,3 +1664,8 @@ class MainWindow(QMainWindow):
                                    title_increment=MultiOsUtil.MAIN_TITLE_FONT_SIZE_INCREMENT,
                                    subtitle_prefix=MultiOsUtil.SUBTITLE_LABEL_PREFIX,
                                    subtitle_increment=MultiOsUtil.SUBTITLE_FONT_SIZE_INCREMENT)
+
+    # Set the flag that tracelog uses to dump call/exit info
+    def write_trace_info_clicked(self):
+        settings = QSettings()
+        settings.setValue(TRACE_LOG_SETTING, self.ui.writeTraceInfo.isChecked())

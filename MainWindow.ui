@@ -42,7 +42,7 @@
        <string/>
       </property>
       <property name="currentIndex">
-       <number>3</number>
+       <number>4</number>
       </property>
       <widget class="QWidget" name="startEndTab">
        <attribute name="title">
@@ -1472,10 +1472,102 @@
           <property name="rightMargin">
            <number>6</number>
           </property>
+          <item row="3" column="5">
+           <layout class="QHBoxLayout" name="coolerPowerLayout">
+            <item alignment="Qt::AlignRight">
+             <widget class="QLabel" name="coolerPowerLabel">
+              <property name="text">
+               <string>Cooler Power:</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="coolerPowerValue">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="text">
+               <string>100%</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item row="0" column="0" colspan="4">
+           <widget class="QLabel" name="Subtitle_tab4a">
+            <property name="text">
+             <string>Console Log:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="1">
+           <spacer name="horizontalSpacer_7">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeType">
+             <enum>QSizePolicy::Fixed</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>160</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item row="3" column="3">
+           <widget class="QPushButton" name="cancelSessionButton">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
+            <property name="toolTip">
+             <string>Cancel the running acquisition process</string>
+            </property>
+            <property name="text">
+             <string>Cancel Session</string>
+            </property>
+           </widget>
+          </item>
           <item row="1" column="0" colspan="4">
            <widget class="QListWidget" name="consoleList">
             <property name="toolTip">
              <string>Messages from the acquisition process</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="5">
+           <widget class="QLabel" name="Subtitle_tab4b">
+            <property name="text">
+             <string>Images Being Acquired:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="0" colspan="6">
+           <widget class="QProgressBar" name="progressBar">
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>0</height>
+             </size>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>16777215</width>
+              <height>13</height>
+             </size>
+            </property>
+            <property name="toolTip">
+             <string>Shows progress of any long-running operation</string>
+            </property>
+            <property name="value">
+             <number>0</number>
+            </property>
+            <property name="textVisible">
+             <bool>false</bool>
             </property>
            </widget>
           </item>
@@ -1522,22 +1614,6 @@
             </attribute>
            </widget>
           </item>
-          <item row="3" column="1">
-           <spacer name="horizontalSpacer_7">
-            <property name="orientation">
-             <enum>Qt::Horizontal</enum>
-            </property>
-            <property name="sizeType">
-             <enum>QSizePolicy::Fixed</enum>
-            </property>
-            <property name="sizeHint" stdset="0">
-             <size>
-              <width>160</width>
-              <height>20</height>
-             </size>
-            </property>
-           </spacer>
-          </item>
           <item row="3" column="0">
            <widget class="QPushButton" name="beginSessionButton">
             <property name="toolTip">
@@ -1548,79 +1624,10 @@
             </property>
            </widget>
           </item>
-          <item row="3" column="3">
-           <widget class="QPushButton" name="cancelSessionButton">
-            <property name="enabled">
-             <bool>false</bool>
-            </property>
-            <property name="toolTip">
-             <string>Cancel the running acquisition process</string>
-            </property>
+          <item row="4" column="0" colspan="6">
+           <widget class="QCheckBox" name="writeTraceInfo">
             <property name="text">
-             <string>Cancel Session</string>
-            </property>
-           </widget>
-          </item>
-          <item row="0" column="5">
-           <widget class="QLabel" name="Subtitle_tab4b">
-            <property name="text">
-             <string>Images Being Acquired:</string>
-            </property>
-           </widget>
-          </item>
-          <item row="2" column="0" colspan="6">
-           <widget class="QProgressBar" name="progressBar">
-            <property name="minimumSize">
-             <size>
-              <width>0</width>
-              <height>0</height>
-             </size>
-            </property>
-            <property name="maximumSize">
-             <size>
-              <width>16777215</width>
-              <height>13</height>
-             </size>
-            </property>
-            <property name="toolTip">
-             <string>Shows progress of any long-running operation</string>
-            </property>
-            <property name="value">
-             <number>0</number>
-            </property>
-            <property name="textVisible">
-             <bool>false</bool>
-            </property>
-           </widget>
-          </item>
-          <item row="3" column="5">
-           <layout class="QHBoxLayout" name="coolerPowerLayout">
-            <item alignment="Qt::AlignRight">
-             <widget class="QLabel" name="coolerPowerLabel">
-              <property name="text">
-               <string>Cooler Power:</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QLabel" name="coolerPowerValue">
-              <property name="sizePolicy">
-               <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
-                <horstretch>0</horstretch>
-                <verstretch>0</verstretch>
-               </sizepolicy>
-              </property>
-              <property name="text">
-               <string>100%</string>
-              </property>
-             </widget>
-            </item>
-           </layout>
-          </item>
-          <item row="0" column="0" colspan="4">
-           <widget class="QLabel" name="Subtitle_tab4a">
-            <property name="text">
-             <string>Console Log:</string>
+             <string>Write a huge quantity of trace information to the system console</string>
             </property>
            </widget>
           </item>
@@ -1736,9 +1743,9 @@
  <resources/>
  <connections/>
  <buttongroups>
-  <buttongroup name="endTimeButtonGroup"/>
-  <buttongroup name="startDay"/>
   <buttongroup name="endDateButtonGroup"/>
   <buttongroup name="startTime"/>
+  <buttongroup name="startDay"/>
+  <buttongroup name="endTimeButtonGroup"/>
  </buttongroups>
 </ui>
