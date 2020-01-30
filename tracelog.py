@@ -19,6 +19,3 @@ def tracelog(func):
         return value
 
     return wrapper_debug
-
-    # TODO Make trace output settable from UI flag
-    # TODO Trace: Use from tracelog
