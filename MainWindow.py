@@ -501,7 +501,8 @@ class MainWindow(QMainWindow):
         proposed_value: str = self.ui.timeZone.text()
         converted_value: float = Validators.valid_int_in_range(proposed_value, -24, +24)
         if converted_value is not None:
-            self.set_is_dirty(converted_value != self.model.get_time_zone())
+            if converted_value != self.model.get_time_zone():
+                self.set_is_dirty(True)
             self.model.set_time_zone(converted_value)
         else:
             self.model.set_time_zone(DataModel.TIMEZONE_NULL)
@@ -1669,3 +1670,5 @@ class MainWindow(QMainWindow):
     def write_trace_info_clicked(self):
         settings = QSettings()
         settings.setValue(TRACE_LOG_SETTING, self.ui.writeTraceInfo.isChecked())
+
+    # TODO Change to "red field" validation notice, as in Flats program
