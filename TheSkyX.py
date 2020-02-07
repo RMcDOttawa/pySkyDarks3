@@ -266,13 +266,17 @@ class TheSkyX:
             except ConnectionRefusedError as cr:
                 success = False
                 result = ""
+            except TimeoutError as te:
+                success = False
+                result = ""
+                message = te.strerror
             except Exception as ex:
                 print("Unexpected error:", sys.exc_info()[0])
                 print(type(ex))
                 print(ex.args)
                 print(ex)
-                raise
-                message = cr.strerror
+                success = False
+                message = ex.strerror + " " + str(sys.exc_info()[0])
         TheSkyX._server_mutex.unlock()
         return success, result, message
 

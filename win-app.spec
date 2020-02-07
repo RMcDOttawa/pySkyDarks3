@@ -1,9 +1,5 @@
 # -*- mode: python ; coding: utf-8 -*-
 
-#  pyinstaller spec file for building a standalone windows application
-#  build machine must have python and all needed packages installed, but the resulting
-#  application is stand-alone and can run on any windows machine
-
 block_cipher = None
 
 

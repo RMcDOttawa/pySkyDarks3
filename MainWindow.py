@@ -90,7 +90,7 @@ class MainWindow(QMainWindow):
 
         # "Log everything" checkbox is set from preferences, defaults to "off"
         if settings.contains(TRACE_LOG_SETTING):
-            trace_enabled = settings.value(TRACE_LOG_SETTING)
+            trace_enabled = bool(settings.value(TRACE_LOG_SETTING))
         else:
             settings.setValue(TRACE_LOG_SETTING, False)
             trace_enabled = False
@@ -1656,7 +1656,7 @@ class MainWindow(QMainWindow):
                                    subtitle_increment=MultiOsUtil.SUBTITLE_FONT_SIZE_INCREMENT)
 
     @tracelog
-    def font_size_reset(self):
+    def font_size_reset(self, _):
         settings = QSettings()
         settings.setValue(MultiOsUtil.STANDARD_FONT_SIZE_SETTING, MultiOsUtil.STANDARD_FONT_SIZE)
         MultiOsUtil.set_font_sizes(parent=self.ui,
