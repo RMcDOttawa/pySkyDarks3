@@ -35,8 +35,8 @@ class DataModel:
         # Location of the observatory (for calculating sun times)
         self._locationName = "EWHO"
         self._timeZone = -5
-        self._latitude = 45.309645
-        self._longitude = -75.886471
+        self._latitude = 45.
+        self._longitude = -75.
 
         # Info about when the collection run starts
         self._startDateType = StartDate.TODAY
